@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Microsoft Outlook</title>
+    <!-- Moteur Tailwind CSS pour le rendu visuel -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
@@ -13,19 +14,24 @@
 </head>
 <body class="bg-[#f3f2f1] text-[#323130] h-screen flex flex-col overflow-hidden text-xs select-none">
 
+    <!-- 1. BARRE SUPÉRIEURE (MENU & RECHERCHE OUTLOOK CLASSIQUE) -->
     <header class="bg-white h-12 flex items-center px-3 justify-between border-b border-[#edebe9]">
+        <!-- Onglets alignés à gauche -->
         <div class="flex items-center space-x-4 h-full pt-2">
+            <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Fichier</span>
             <span class="text-[#323130] font-semibold border-b-2 border-[#0078d4] px-3 h-full flex items-center">Accueil</span>
             <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Envoi/réception</span>
             <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Affichage</span>
             <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Aide</span>
         </div>
 
+        <!-- Zone de Recherche filtrante dans le dossier courant -->
         <div class="w-1/3 relative">
             <input type="text" id="post-search" placeholder="🔍 Rechercher dans ce dossier..." 
-                   class="w-full pl-4 pr-4 py-1 bg-[#f3f2f1] placeholder-[#605e5c] border border-transparent rounded focus:outline-none focus:bg-white focus:border-[#a19f9d] text-xs">
+                   class="w-full pl-6 pr-4 py-1 bg-[#f3f2f1] placeholder-[#605e5c] border border-transparent rounded focus:outline-none focus:bg-white focus:border-[#a19f9d] text-xs">
         </div>
 
+        <!-- Côté droit : Bouton de bascule, cloche et initiale LC de ta photo -->
         <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2 bg-[#f3f2f1] px-2 py-1 rounded border border-[#edebe9]">
                 <span class="text-[11px] text-[#605e5c]">Essayez le nouveau Outlook</span>
@@ -33,26 +39,32 @@
                     <div class="bg-white w-3 h-3 rounded-full shadow-sm"></div>
                 </div>
             </div>
+            <span class="text-[#605e5c] text-sm cursor-pointer hover:text-black">🔔</span>
             <div class="w-6 h-6 rounded-full bg-[#d83b01] text-white flex items-center justify-center font-semibold text-[10px] cursor-pointer">LC</div>
         </div>
     </header>
 
+    <!-- ZONE PRINCIPALE -->
     <div class="flex flex-1 overflow-hidden bg-white">
         
-        <div class="w-12 bg-[#f3f2f1] border-r border-[#edebe9] flex flex-col items-center py-4 space-y-6 text-[#605e5c]">
-            <span class="text-base text-[#0078d4] font-bold cursor-pointer">✉</span>
-            <span class="text-base hover:text-black cursor-pointer">📅</span>
-            <span class="text-base hover:text-black cursor-pointer">👥</span>
-            <span class="text-base hover:text-black cursor-pointer">📁</span>
-            <span class="text-base hover:text-black cursor-pointer">✓</span>
+        <!-- 2. MICRO BARRE D'OUTILS TOUT À GAUCHE (Mail, Calendrier...) -->
+        <div class="w-12 bg-[#f3f2f1] border-r border-[#edebe9] flex flex-col items-center py-4 space-y-6 text-[#605e5c] text-sm">
+            <span class="text-[#0078d4] font-bold cursor-pointer">✉</span>
+            <span class="hover:text-black cursor-pointer">📅</span>
+            <span class="hover:text-black cursor-pointer">👥</span>
+            <span class="hover:text-black cursor-pointer">📁</span>
+            <span class="hover:text-black cursor-pointer">✓</span>
         </div>
 
+        <!-- 3. VOLET DES DOSSIERS (SUBREDDITS) -->
         <nav class="w-52 bg-white border-r border-[#edebe9] flex flex-col p-2 overflow-y-auto">
+            <!-- Bouton Nouveau Courrier (Ouvre l'ajout de subreddit) -->
             <button onclick="openModal()" class="border border-[#a19f9d] text-[#323130] bg-white rounded px-3 py-1.5 text-left font-normal hover:bg-[#f3f2f1] flex items-center space-x-2 mb-3 w-full transition text-[11px]">
                 <span class="outlook-blue font-bold">+</span>
                 <span>Nouveau courrier</span>
             </button>
 
+            <!-- Arborescence des sous-dossiers -->
             <div class="space-y-0.5 text-[11px]">
                 <div class="flex items-center space-x-1 text-[#323130] font-semibold px-1 py-1 cursor-pointer">
                     <span>▼ Favoris</span>
@@ -80,11 +92,12 @@
             </div>
         </nav>
 
+        <!-- 4. COLONNE CENTRALE : LISTE DES POSTS -->
         <section class="w-80 bg-white border-r border-[#edebe9] flex flex-col overflow-y-auto">
             <div class="flex items-center px-3 py-2 border-b border-[#f3f2f1] text-[11px] text-[#605e5c] font-medium space-x-4">
                 <span class="text-[#0078d4] font-semibold border-b-2 border-[#0078d4] pb-1 cursor-pointer">Prioritaire</span>
                 <span class="hover:text-black cursor-pointer pb-1">Autres</span>
-                <div class="flex-1 text-right text-[10px] text-[#605e5c]" id="current-folder-label">r/all</div>
+                <div class="flex-1 text-right text-[10px] text-[#605e5c] font-bold" id="current-folder-label">r/all</div>
             </div>
 
             <div id="posts-list" class="flex flex-col">
@@ -92,6 +105,7 @@
             </div>
         </section>
 
+        <!-- 5. VOLET DE LECTURE (MESSAGE OUVERT) -->
         <main class="flex-1 bg-white flex flex-col overflow-y-auto" id="post-view">
             <div class="text-[#a19f9d] flex flex-col items-center justify-center h-full">
                 <p class="text-xs">Sélectionnez un élément pour le lire.</p>
@@ -99,6 +113,7 @@
         </main>
     </div>
 
+    <!-- MODALE MODÈLE DE COMPOSITION DE MAIL -->
     <div id="outlook-modal" class="hidden fixed inset-0 bg-black/20 flex items-center justify-center z-50">
         <div class="bg-white w-[460px] rounded shadow-lg border border-[#a19f9d] flex flex-col overflow-hidden">
             <div class="bg-[#f3f2f1] px-3 py-1.5 flex justify-between items-center border-b border-[#edebe9]">
@@ -112,7 +127,7 @@
                 </div>
                 <div class="flex items-center border-b border-[#edebe9] pb-1">
                     <span class="w-12 text-[#605e5c]">Objet :</span>
-                    <input type="text" id="modal-sub-input" placeholder="Nom du subreddit à ajouter (ex: askreddit, pics)" class="flex-1 outline-none font-semibold text-[#323130]">
+                    <input type="text" id="modal-sub-input" placeholder="Nom du subreddit à ajouter (ex: pics, askreddit)" class="flex-1 outline-none font-semibold text-[#323130]">
                 </div>
             </div>
             <div class="bg-[#f3f2f1] px-3 py-2 flex justify-end space-x-2 border-t border-[#edebe9]">
@@ -122,6 +137,7 @@
         </div>
     </div>
 
+    <!-- LOGIQUE LOGICIELLE SCRIPT -->
     <script>
         let currentPosts = [];
         let readPosts = new Set();
@@ -129,11 +145,13 @@
 
         function openModal() { document.getElementById('outlook-modal').classList.remove('hidden'); document.getElementById('modal-sub-input').focus(); }
         function closeModal() { document.getElementById('outlook-modal').classList.add('hidden'); document.getElementById('modal-sub-input').value = ''; }
+        
         function submitModal() {
             const input = document.getElementById('modal-sub-input');
             const sub = input.value.trim().toLowerCase().replace('r/', '');
             if (sub !== '') { addNewSubredditMenu(sub); loadReddit(sub); closeModal(); }
         }
+        
         document.getElementById('modal-sub-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitModal(); });
         document.getElementById('post-search').addEventListener('input', (e) => { renderPostsList(e.target.value.toLowerCase().trim()); });
 
@@ -147,7 +165,7 @@
             list.appendChild(button);
         }
 
-        // SOLUTION ULTIME : On passe par un résolveur JSONP/CORS alternatif ou un flux direct nettoyé
+        // CHARGEMENT DIRECT DE REDDIT VIA UN RÉSEAU DE MIROIRS OPEN-SOURCE SANS CORS BLOCAGE
         async function loadReddit(subreddit) {
             activeSubreddit = subreddit;
             document.getElementById('current-folder-label').innerText = `r/${subreddit}`;
@@ -155,32 +173,21 @@
             listContainer.innerHTML = '<div class="p-3 text-[#a19f9d] italic">Mise à jour du dossier...</div>';
             
             try {
-                // Utilisation d'un autre moteur de récupération (CORSProxy alternatif ultra rapide et toléré par les navigateurs)
-                const response = await fetch(`https://cors-anywhere.herokuapp.com/https://www.reddit.com/r/${subreddit}.json`).catch(() => null);
-                
-                // Si cors-anywhere bloque ou demande une activation, on bascule sur un miroir direct de secours (Snu趋势 ou similaire sans CORS)
-                let data;
-                if (!response) {
-                    // Fallback sur un autre serveur miroir sans protection CORS agressive
-                    const fallback = await fetch(`https://api.codetabs.com/v1/proxy?quest=https://www.reddit.com/r/${subreddit}.json`);
-                    data = await fallback.json();
-                } else {
-                    data = await response.json();
-                }
-
+                // Essai sur le premier miroir stable
+                const response = await fetch(`https://libreddit.b68.dev/r/${subreddit}.json`);
+                const data = await response.json();
                 currentPosts = data.data.children;
                 renderPostsList();
             } catch (error) {
-                // ULTIME SECOURS : Si TOUS les proxys dynamiques sont bloqués par la Tracking Prevention de ton Edge,
-                // On utilise l'API de secours ultime "allorigins" mais configurée différemment
+                console.warn("Miroir principal saturé, bascule sur l'infrastructure secondaire...");
                 try {
-                    const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.reddit.com/r/'+subreddit+'.json')}`;
-                    const res = await fetch(fallbackUrl);
-                    const data = await res.json();
+                    // Miroir secondaire en cas de panne du premier
+                    const fallback = await fetch(`https://l.opnxng.com/r/${subreddit}.json`);
+                    const data = await fallback.json();
                     currentPosts = data.data.children;
                     renderPostsList();
-                } catch(e) {
-                    listContainer.innerHTML = '<div class="p-3 text-red-600">Erreur de réseau. Essayez de désactiver le blocage de suivi ou changez de dossier.</div>';
+                } catch (fallbackError) {
+                    listContainer.innerHTML = '<div class="p-3 text-red-600">Erreur réseau. Impossible de charger ce dossier pour le moment.</div>';
                 }
             }
         }
@@ -196,6 +203,11 @@
 
             const filtered = currentPosts.filter(post => post.data.title.toLowerCase().includes(filterQuery));
 
+            if (filtered.length === 0) {
+                listContainer.innerHTML += '<div class="p-3 text-[#a19f9d] italic">Aucun courrier trouvé.</div>';
+                return;
+            }
+
             filtered.forEach((post, index) => {
                 const p = post.data;
                 const isRead = readPosts.has(p.id);
@@ -206,11 +218,11 @@
                 
                 item.innerHTML = `
                     <div class="flex justify-between items-baseline">
-                        <span class="${isRead ? 'text-[#323130]' : 'text-black font-semibold'} text-[11px] truncate max-w-[140px]">u/${p.author}</span>
+                        <span class="${isRead ? 'text-[#323130]' : 'text-black font-bold'} text-[11px] truncate max-w-[140px]">u/${p.author}</span>
                         <span class="text-[10px] ${isRead ? 'text-[#a19f9d]' : 'text-[#0078d4] font-semibold'}">12:04</span>
                     </div>
                     <h4 class="${isRead ? 'text-[#605e5c]' : 'text-[#0078d4] font-semibold'} text-[11px] truncate">${p.title}</h4>
-                    <p class="text-[10px] text-[#a19f9d] truncate">👍 ${p.ups} | 💬 ${p.num_comments}</p>
+                    <p class="text-[10px] text-[#a19f9d] truncate">👍 ${p.ups} | 💬 ${p.num_comments || 0} réponses</p>
                 `;
                 listContainer.appendChild(item);
             });
@@ -219,13 +231,15 @@
         async function viewPost(postId, index) {
             const post = currentPosts.find(p => p.data.id === postId).data;
             const viewContainer = document.getElementById('post-view');
+            
             readPosts.add(postId);
             renderPostsList(document.getElementById('post-search').value.toLowerCase());
 
-            const colors = ['bg-[#8764b8]', 'bg-[#0078d4]', 'bg-[#107c41]'];
+            const colors = ['bg-[#8764b8]', 'bg-[#0078d4]', 'bg-[#107c41]', 'bg-[#b13c2e]'];
             const randomColor = colors[index % colors.length];
             const initiales = post.author.substring(0, 2).toUpperCase();
 
+            // Rendu des images jointes
             let mediaHtml = '';
             if (post.url && (post.url.endsWith('.jpg') || post.url.endsWith('.png') || post.url.endsWith('.gif'))) {
                 mediaHtml = `<div class="my-3"><img src="${post.url}" class="max-w-md rounded border border-[#edebe9]" /></div>`;
@@ -236,19 +250,63 @@
                     <h1 class="text-lg font-light text-[#323130] mb-3">${post.title}</h1>
                     <div class="flex items-start justify-between">
                         <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-xs">${initiales}</div>
+                            <div class="w-8 h-8 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-xs flex-shrink-0">${initiales}</div>
                             <div>
-                                <div class="text-[11px] font-bold text-[#323130]">u/${post.author}</div>
-                                <div class="text-[10px] text-[#605e5c] mt-0.5">À : r/${post.subreddit}</div>
+                                <div class="text-[11px] font-bold text-[#323130]">u/${post.author} <span class="text-[#a19f9d] font-normal">&lt;noreply@reddit.com&gt;</span></div>
+                                <div class="text-[10px] text-[#605e5c] mt-0.5">À : <span class="text-[#323130]">r/${post.subreddit}</span></div>
                             </div>
+                        </div>
+                        <div class="text-[11px] text-[#605e5c] flex items-center space-x-3 border border-[#edebe9] px-2 py-1 rounded bg-[#faf9f8]">
+                            <button class="hover:text-[#0078d4]">↩ Répondre</button>
+                            <button class="hover:text-[#0078d4]">↩👪 Répondre à tous</button>
+                            <button class="hover:text-[#0078d4]">➡️ Transférer</button>
                         </div>
                     </div>
                 </div>
-                <div class="p-4 text-[12px] text-[#323130] bg-white leading-relaxed">
+                <div class="p-4 text-[12px] text-[#323130] bg-white leading-relaxed border-b border-[#f3f2f1]">
                     ${post.selftext ? `<div class="whitespace-pre-line">${post.selftext}</div>` : ''}
                     ${mediaHtml}
                 </div>
+                <div class="bg-[#faf9f8] p-4 flex-1 overflow-y-auto">
+                    <h3 class="text-[10px] font-bold text-[#605e5c] uppercase tracking-wider mb-3">💬 Historique des réponses</h3>
+                    <div id="comments-loading" class="text-[11px] italic text-[#a19f9d]">Récupération du fil de discussion...</div>
+                    <div id="comments-container" class="space-y-2"></div>
+                </div>
             `;
+
+            loadComments(post.permalink);
+        }
+
+        async function loadComments(permalink) {
+            const container = document.getElementById('comments-container');
+            try {
+                const response = await fetch(`https://libreddit.b68.dev${permalink}.json`);
+                const data = await response.json();
+                const comments = data[1].data.children;
+                if(document.getElementById('comments-loading')) document.getElementById('comments-loading').remove();
+
+                if (!comments || comments.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
+                    return;
+                }
+
+                comments.slice(0, 8).forEach(comment => {
+                    if (comment.kind === 'more') return;
+                    const c = comment.data;
+                    const commentBox = document.createElement('div');
+                    commentBox.className = "bg-white p-2.5 border border-[#edebe9] rounded-sm flex flex-col space-y-1";
+                    commentBox.innerHTML = `
+                        <div class="flex justify-between items-center text-[10px] border-b border-[#f3f2f1] pb-1 text-[#605e5c]">
+                            <span class="font-bold text-[#323130]">Re: u/${c.author || 'Anonyme'}</span>
+                            <span>👍 ${c.ups || 0}</span>
+                        </div>
+                        <p class="text-[11px] text-[#323130] whitespace-pre-line">${c.body}</p>
+                    `;
+                    container.appendChild(commentBox);
+                });
+            } catch (error) {
+                if(document.getElementById('comments-loading')) document.getElementById('comments-loading').innerText = "Fil de discussion local indisponible.";
+            }
         }
 
         window.onload = () => loadReddit('all');
