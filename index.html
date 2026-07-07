@@ -9,6 +9,10 @@
         body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
         .outlook-blue { color: #0078d4; }
         .outlook-bg-blue { background-color: #0078d4; }
+        /* Style pour nettoyer le HTML renvoyé par le RSS de Reddit */
+        .rss-content img { max-width: 100%; border-radius: 4px; margin-top: 10px; border: 1px solid #edebe9; }
+        .rss-content a { color: #0078d4; text-decoration: none; }
+        .rss-content a:hover { text-decoration: underline; }
     </style>
 </head>
 <body class="bg-[#f3f2f1] text-[#323130] h-screen flex flex-col overflow-hidden text-xs select-none">
@@ -110,7 +114,7 @@
             <div class="p-3 flex flex-col space-y-2 text-[11px]">
                 <div class="flex items-center border-b border-[#edebe9] pb-1">
                     <span class="w-12 text-[#605e5c]">À :</span>
-                    <div class="bg-[#eff6fc] text-[#0078d4] px-1.5 py-0.5 rounded border border-[#c7e0f4] font-medium">Serveur Reddit</div>
+                    <div class="bg-[#eff6fc] text-[#0078d4] px-1.5 py-0.5 rounded border border-[#c7e0f4] font-medium">Serveur Reddit (RSS)</div>
                 </div>
                 <div class="flex items-center border-b border-[#edebe9] pb-1">
                     <span class="w-12 text-[#605e5c]">Objet :</span>
@@ -129,7 +133,7 @@
         window.readPosts = new Set();
         window.activeSubreddit = 'all';
 
-        // Interface modale
+        // Modale d'ajout
         window.openModal = function() { document.getElementById('outlook-modal').classList.remove('hidden'); document.getElementById('modal-sub-input').focus(); };
         window.closeModal = function() { document.getElementById('outlook-modal').classList.add('hidden'); document.getElementById('modal-sub-input').value = ''; };
         
@@ -156,59 +160,30 @@
             list.appendChild(button);
         };
 
-        // --- CALLBACKS GLOBAUX JSONP ---
-        // Exécuté quand Reddit renvoie la liste des e-mails
-        window.onRedditPostsLoaded = function(result) {
-            if (result && result.data && result.data.children) {
-                window.currentPosts = result.data.children;
-                window.renderPostsList();
-            } else {
-                document.getElementById('posts-list').innerHTML = '<div class="p-3 text-red-600">Erreur de données.</div>';
-            }
-        };
-
-        // Exécuté quand Reddit renvoie un fil de discussion
-        window.onRedditCommentsLoaded = function(result) {
-            const container = document.getElementById('comments-container');
-            const loader = document.getElementById('comments-loading');
-            if (loader) loader.remove();
-            
-            if (!result || !result[1] || !result[1].data || !result[1].data.children) {
-                container.innerHTML = '<p class="text-xs text-[#a19f9d] italic">Aucune réponse dans ce fil.</p>';
-                return;
-            }
-
-            const comments = result[1].data.children;
-            comments.slice(0, 8).forEach(comment => {
-                if (comment.kind === 'more') return;
-                const c = comment.data;
-                const commentBox = document.createElement('div');
-                commentBox.className = "bg-white p-2.5 border border-[#edebe9] rounded-sm flex flex-col space-y-1";
-                commentBox.innerHTML = `
-                    <div class="flex justify-between items-center text-[10px] border-b border-[#f3f2f1] pb-1 text-[#605e5c]">
-                        <span class="font-bold text-[#323130]">Re: u/${c.author || 'Anonyme'}</span>
-                        <span>👍 ${c.ups || 0}</span>
-                    </div>
-                    <p class="text-[11px] text-[#323130] whitespace-pre-line">${c.body}</p>
-                `;
-                container.appendChild(commentBox);
-            });
-        };
-
-        // --- CHARGEMENT JSONP DIRECT (SANS CORS, SANS PROXY) ---
-        window.loadReddit = function(subreddit) {
+        // --- NOUVELLE MÉTHODE : FETCH VIA FLUX RSS (La seule méthode survivante en 2026 sans API Key) ---
+        window.loadReddit = async function(subreddit) {
             window.activeSubreddit = subreddit;
             document.getElementById('current-folder-label').innerText = `r/${subreddit}`;
-            document.getElementById('posts-list').innerHTML = '<div class="p-3 text-[#a19f9d] italic">Connexion au serveur Reddit...</div>';
+            const listContainer = document.getElementById('posts-list');
+            listContainer.innerHTML = '<div class="p-3 text-[#a19f9d] italic">Synchronisation Exchange (RSS)...</div>';
             
-            const oldScript = document.getElementById('jsonp-posts');
-            if (oldScript) oldScript.remove();
-
-            const script = document.createElement('script');
-            script.id = 'jsonp-posts';
-            // Le paramètre jsonp force Reddit à répondre sans bloquer la requête
-            script.src = `https://www.reddit.com/r/${subreddit}.json?jsonp=onRedditPostsLoaded&limit=25&nocache=${Date.now()}`;
-            document.body.appendChild(script);
+            try {
+                // On passe le flux RSS officiel de Reddit à travers le convertisseur gratuit rss2json
+                const rssFeed = `https://www.reddit.com/r/${subreddit}.rss`;
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssFeed)}`;
+                
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    window.currentPosts = data.items;
+                    window.renderPostsList();
+                } else {
+                    listContainer.innerHTML = '<div class="p-3 text-[#d83b01]">Subreddit privé ou introuvable.</div>';
+                }
+            } catch (error) {
+                listContainer.innerHTML = '<div class="p-3 text-[#d83b01]">Serveur de synchronisation injoignable.</div>';
+            }
         };
 
         window.renderPostsList = function(filterQuery = '') {
@@ -220,7 +195,7 @@
             timeHeader.innerHTML = `<span>▼ Aujourd'hui</span>`;
             listContainer.appendChild(timeHeader);
 
-            const filtered = window.currentPosts.filter(post => post.data.title.toLowerCase().includes(filterQuery));
+            const filtered = window.currentPosts.filter(post => post.title.toLowerCase().includes(filterQuery));
 
             if (filtered.length === 0) {
                 listContainer.innerHTML += '<div class="p-3 text-[#a19f9d] italic">Aucun courrier trouvé.</div>';
@@ -228,39 +203,42 @@
             }
 
             filtered.forEach((post, index) => {
-                const p = post.data;
-                const isRead = window.readPosts.has(p.id);
+                const isRead = window.readPosts.has(post.link);
                 const item = document.createElement('div');
                 item.className = `p-2 px-3 border-b border-[#f3f2f1] hover:bg-[#f3f2f1] cursor-pointer flex flex-col relative transition ${isRead ? 'border-l-2 border-transparent' : 'border-l-2 border-[#0078d4] bg-[#eff6fc]/30'}`;
                 if(!isRead) item.style.borderLeft = "3px solid #0078d4";
-                item.onclick = () => window.viewPost(p.id, index);
+                item.onclick = () => window.viewPost(post.link, index);
                 
+                // Nettoyage de l'auteur (RSS renvoie un lien HTML pour l'auteur)
+                let authorName = post.author || "Anonyme";
+                let pubTime = new Date(post.pubDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
                 item.innerHTML = `
                     <div class="flex justify-between items-baseline">
-                        <span class="${isRead ? 'text-[#323130]' : 'text-black font-bold'} text-[11px] truncate max-w-[140px]">u/${p.author}</span>
-                        <span class="text-[10px] ${isRead ? 'text-[#a19f9d]' : 'text-[#0078d4] font-semibold'}">12:04</span>
+                        <span class="${isRead ? 'text-[#323130]' : 'text-black font-bold'} text-[11px] truncate max-w-[140px]">${authorName}</span>
+                        <span class="text-[10px] ${isRead ? 'text-[#a19f9d]' : 'text-[#0078d4] font-semibold'}">${pubTime}</span>
                     </div>
-                    <h4 class="${isRead ? 'text-[#605e5c]' : 'text-[#0078d4] font-semibold'} text-[11px] truncate">${p.title}</h4>
-                    <p class="text-[10px] text-[#a19f9d] truncate">👍 ${p.ups} | 💬 ${p.num_comments || 0} réponses</p>
+                    <h4 class="${isRead ? 'text-[#605e5c]' : 'text-[#0078d4] font-semibold'} text-[11px] truncate">${post.title}</h4>
+                    <p class="text-[10px] text-[#a19f9d] truncate">🔗 Lien direct Outlook Web</p>
                 `;
                 listContainer.appendChild(item);
             });
         };
 
-        window.viewPost = function(postId, index) {
-            const post = window.currentPosts.find(p => p.data.id === postId).data;
+        window.viewPost = function(postLink, index) {
+            const post = window.currentPosts.find(p => p.link === postLink);
             const viewContainer = document.getElementById('post-view');
             
-            window.readPosts.add(postId);
+            window.readPosts.add(postLink);
             window.renderPostsList(document.getElementById('post-search').value.toLowerCase());
 
             const colors = ['bg-[#8764b8]', 'bg-[#0078d4]', 'bg-[#107c41]', 'bg-[#b13c2e]'];
             const randomColor = colors[index % colors.length];
-            const initiales = post.author.substring(0, 2).toUpperCase();
-
-            let mediaHtml = '';
-            if (post.url && (post.url.endsWith('.jpg') || post.url.endsWith('.png') || post.url.endsWith('.gif'))) {
-                mediaHtml = `<div class="my-3"><img src="${post.url}" class="max-w-md rounded border border-[#edebe9]" /></div>`;
+            
+            let authorName = post.author || "Anonyme";
+            let initiales = "RE"; // Par défaut
+            if (authorName.length > 2) {
+                initiales = authorName.replace('/u/', '').substring(0, 2).toUpperCase();
             }
 
             viewContainer.innerHTML = `
@@ -270,38 +248,26 @@
                         <div class="flex items-center space-x-3">
                             <div class="w-8 h-8 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-xs flex-shrink-0">${initiales}</div>
                             <div>
-                                <div class="text-[11px] font-bold text-[#323130]">u/${post.author} <span class="text-[#a19f9d] font-normal">&lt;noreply@reddit.com&gt;</span></div>
-                                <div class="text-[10px] text-[#605e5c] mt-0.5">À : <span class="text-[#323130]">r/${post.subreddit}</span></div>
+                                <div class="text-[11px] font-bold text-[#323130]">${authorName} <span class="text-[#a19f9d] font-normal">&lt;noreply@reddit.com&gt;</span></div>
+                                <div class="text-[10px] text-[#605e5c] mt-0.5">À : <span class="text-[#323130]">r/${window.activeSubreddit}</span></div>
                             </div>
                         </div>
                         <div class="text-[11px] text-[#605e5c] flex items-center space-x-3 border border-[#edebe9] px-2 py-1 rounded bg-[#faf9f8]">
-                            <button class="hover:text-[#0078d4]">↩ Répondre</button>
-                            <button class="hover:text-[#0078d4]">↩👪 Répondre à tous</button>
-                            <button class="hover:text-[#0078d4]">➡️ Transférer</button>
+                            <a href="${post.link}" target="_blank" class="hover:text-[#0078d4] font-semibold">🔗 Lire le fil d'origine sur Reddit</a>
                         </div>
                     </div>
                 </div>
-                <div class="p-4 text-[12px] text-[#323130] bg-white leading-relaxed border-b border-[#f3f2f1]">
-                    ${post.selftext ? `<div class="whitespace-pre-line">${post.selftext}</div>` : ''}
-                    ${mediaHtml}
+                <div class="p-4 text-[12px] text-[#323130] bg-white leading-relaxed border-b border-[#f3f2f1] rss-content overflow-y-auto">
+                    ${post.content || post.description}
                 </div>
-                <div class="bg-[#faf9f8] p-4 flex-1 overflow-y-auto">
-                    <h3 class="text-[10px] font-bold text-[#605e5c] uppercase tracking-wider mb-3">💬 Historique des réponses</h3>
-                    <div id="comments-loading" class="text-[11px] italic text-[#a19f9d]">Récupération du fil de discussion...</div>
-                    <div id="comments-container" class="space-y-2"></div>
+                <div class="bg-[#faf9f8] p-4 flex-1">
+                    <h3 class="text-[10px] font-bold text-[#605e5c] uppercase tracking-wider mb-2">🔒 Accès restreint</h3>
+                    <p class="text-[11px] text-[#a19f9d]">Suite à la mise à jour de sécurité de mai 2026, l'accès public aux commentaires internes est désactivé. Veuillez cliquer sur "Lire le fil d'origine" pour voir les réponses.</p>
                 </div>
             `;
-
-            const oldScript = document.getElementById('jsonp-comments');
-            if (oldScript) oldScript.remove();
-
-            const script = document.createElement('script');
-            script.id = 'jsonp-comments';
-            script.src = `https://www.reddit.com${post.permalink}.json?jsonp=onRedditCommentsLoaded&nocache=${Date.now()}`;
-            document.body.appendChild(script);
         };
 
-        // Démarrage de l'application
+        // Démarrage
         window.onload = function() {
             window.loadReddit('all');
         };
