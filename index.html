@@ -50,7 +50,7 @@
         </div>
 
         <nav class="w-52 bg-white border-r border-[#edebe9] flex flex-col p-2 overflow-y-auto">
-            <button onclick="openModal()" class="border border-[#a19f9d] text-[#323130] bg-white rounded px-3 py-1.5 text-left font-normal hover:bg-[#f3f2f1] flex items-center space-x-2 mb-3 w-full transition text-[11px]">
+            <button onclick="window.openModal()" class="border border-[#a19f9d] text-[#323130] bg-white rounded px-3 py-1.5 text-left font-normal hover:bg-[#f3f2f1] flex items-center space-x-2 mb-3 w-full transition text-[11px]">
                 <span class="outlook-blue font-bold">+</span>
                 <span>Nouveau courrier</span>
             </button>
@@ -60,7 +60,7 @@
                     <span>▼ Favoris</span>
                 </div>
                 <div class="pl-3 space-y-0.5">
-                    <button onclick="loadReddit('all')" class="flex items-center justify-between px-2 py-0.5 text-[#323130] bg-[#eff6fc] border-l-2 border-[#0078d4] font-semibold w-full text-left">
+                    <button onclick="window.loadReddit('all')" class="flex items-center justify-between px-2 py-0.5 text-[#323130] bg-[#eff6fc] border-l-2 border-[#0078d4] font-semibold w-full text-left">
                         <span>Boîte de réception</span>
                         <span class="text-[#0078d4] text-[10px] font-bold">r/all</span>
                     </button>
@@ -72,10 +72,10 @@
                     <span>▼ lucas.cussac@reddit.fr</span>
                 </div>
                 <div class="pl-3 space-y-0.5" id="subreddits-list">
-                    <button onclick="loadReddit('france')" class="flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left">
+                    <button onclick="window.loadReddit('france')" class="flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left">
                         <span>r/france</span>
                     </button>
-                    <button onclick="loadReddit('gaming')" class="flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left">
+                    <button onclick="window.loadReddit('gaming')" class="flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left">
                         <span>r/gaming</span>
                     </button>
                 </div>
@@ -105,7 +105,7 @@
         <div class="bg-white w-[460px] rounded shadow-lg border border-[#a19f9d] flex flex-col overflow-hidden">
             <div class="bg-[#f3f2f1] px-3 py-1.5 flex justify-between items-center border-b border-[#edebe9]">
                 <span class="font-semibold text-[11px] text-[#323130]">Nouveau message</span>
-                <button onclick="closeModal()" class="text-[#605e5c] font-bold">✕</button>
+                <button onclick="window.closeModal()" class="text-[#605e5c] font-bold">✕</button>
             </div>
             <div class="p-3 flex flex-col space-y-2 text-[11px]">
                 <div class="flex items-center border-b border-[#edebe9] pb-1">
@@ -118,79 +118,39 @@
                 </div>
             </div>
             <div class="bg-[#f3f2f1] px-3 py-2 flex justify-end space-x-2 border-t border-[#edebe9]">
-                <button onclick="closeModal()" class="px-3 py-1 border border-[#a19f9d] bg-white text-[#323130]">Abandonner</button>
-                <button onclick="submitModal()" class="px-4 py-1 outlook-bg-blue text-white font-semibold">Envoyer</button>
+                <button onclick="window.closeModal()" class="px-3 py-1 border border-[#a19f9d] bg-white text-[#323130]">Abandonner</button>
+                <button onclick="window.submitModal()" class="px-4 py-1 outlook-bg-blue text-white font-semibold">Envoyer</button>
             </div>
         </div>
     </div>
 
     <script>
-        let currentPosts = [];
-        let readPosts = new Set();
-        let activeSubreddit = 'all';
+        window.currentPosts = [];
+        window.readPosts = new Set();
+        window.activeSubreddit = 'all';
 
-        function openModal() { document.getElementById('outlook-modal').classList.remove('hidden'); document.getElementById('modal-sub-input').focus(); }
-        function closeModal() { document.getElementById('outlook-modal').classList.add('hidden'); document.getElementById('modal-sub-input').value = ''; }
+        // Interface modale
+        window.openModal = function() { document.getElementById('outlook-modal').classList.remove('hidden'); document.getElementById('modal-sub-input').focus(); };
+        window.closeModal = function() { document.getElementById('outlook-modal').classList.add('hidden'); document.getElementById('modal-sub-input').value = ''; };
         
-        function submitModal() {
+        window.submitModal = function() {
             const input = document.getElementById('modal-sub-input');
             const sub = input.value.trim().toLowerCase().replace('r/', '');
-            if (sub !== '') { addNewSubredditMenu(sub); loadReddit(sub); closeModal(); }
-        }
+            if (sub !== '') { 
+                window.addNewSubredditMenu(sub); 
+                window.loadReddit(sub); 
+                window.closeModal(); 
+            }
+        };
         
-        document.getElementById('modal-sub-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitModal(); });
-        document.getElementById('post-search').addEventListener('input', (e) => { renderPostsList(e.target.value.toLowerCase().trim()); });
+        document.getElementById('modal-sub-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') window.submitModal(); });
+        document.getElementById('post-search').addEventListener('input', function(e) { window.renderPostsList(e.target.value.toLowerCase().trim()); });
 
-        function addNewSubredditMenu(sub) {
+        window.addNewSubredditMenu = function(sub) {
             const list = document.getElementById('subreddits-list');
             if ([...list.querySelectorAll('span')].some(el => el.innerText === `r/${sub}`)) return;
             const button = document.createElement('button');
-            button.onclick = () => loadReddit(sub);
+            button.onclick = () => window.loadReddit(sub);
             button.className = "flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left";
             button.innerHTML = `<span>r/${sub}</span>`;
-            list.appendChild(button);
-        }
-
-        // Système d'injection de script dynamique pour le JSONP
-        function fetchJSONP(url, callbackName) {
-            const oldScript = document.getElementById('jsonp-script');
-            if (oldScript) oldScript.remove();
-
-            const script = document.createElement('script');
-            script.id = 'jsonp-script';
-            script.src = `${url}${url.includes('?') ? '&' : '?'}jsonp=${callbackName}&nocache=${Date.now()}`;
-            document.body.appendChild(script);
-        }
-
-        // Callback global exécuté pour charger la liste des posts
-        window.onRedditPostsLoaded = function(result) {
-            if (result && result.data && result.data.children) {
-                currentPosts = result.data.children;
-                renderPostsList();
-            } else {
-                document.getElementById('posts-list').innerHTML = '<div class="p-3 text-red-600">Erreur de structure de données.</div>';
-            }
-        };
-
-        // Callback global exécuté pour charger les commentaires
-        window.onRedditCommentsLoaded = function(result) {
-            const container = document.getElementById('comments-container');
-            if(document.getElementById('comments-loading')) document.getElementById('comments-loading').remove();
-            
-            if (!result || !result[1] || !result[1].data || !result[1].data.children) {
-                container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
-                return;
-            }
-
-            const comments = result[1].data.children;
-            comments.slice(0, 8).forEach(comment => {
-                if (comment.kind === 'more') return;
-                const c = comment.data;
-                const commentBox = document.createElement('div');
-                commentBox.className = "bg-white p-2.5 border border-[#edebe9] rounded-sm flex flex-col space-y-1";
-                commentBox.innerHTML = `
-                    <div class="flex justify-between items-center text-[10px] border-b border-[#f3f2f1] pb-1 text-[#605e5c]">
-                        <span class="font-bold text-[#323130]">Re: u/${c.author || 'Anonyme'}</span>
-                        <span>👍 ${c.ups || 0}</span>
-                    </div>
-                    <p class="text-[11px] text-
+            list.
