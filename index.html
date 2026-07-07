@@ -151,10 +151,8 @@
             list.appendChild(button);
         }
 
-        // --- LA MAGIE JSONP DU PROJET ORIGINAL ---
-        // Cette fonction crée une balise <script> temporaire pour forcer le navigateur à bypasser complètement le CORS.
+        // Système d'injection de script dynamique pour le JSONP
         function fetchJSONP(url, callbackName) {
-            // Supprimer l'ancien script de secours s'il existe
             const oldScript = document.getElementById('jsonp-script');
             if (oldScript) oldScript.remove();
 
@@ -164,14 +162,35 @@
             document.body.appendChild(script);
         }
 
-        // Callback Global appelé automatiquement par Reddit lors du traitement JSONP des posts
+        // Callback global exécuté pour charger la liste des posts
         window.onRedditPostsLoaded = function(result) {
             if (result && result.data && result.data.children) {
                 currentPosts = result.data.children;
                 renderPostsList();
             } else {
-                document.getElementById('posts-list').innerHTML = '<div class="p-3 text-red-600">Données Reddit corrompues.</div>';
+                document.getElementById('posts-list').innerHTML = '<div class="p-3 text-red-600">Erreur de structure de données.</div>';
             }
         };
 
-        // Callback Global appelé pour traiter les commentaires
+        // Callback global exécuté pour charger les commentaires
+        window.onRedditCommentsLoaded = function(result) {
+            const container = document.getElementById('comments-container');
+            if(document.getElementById('comments-loading')) document.getElementById('comments-loading').remove();
+            
+            if (!result || !result[1] || !result[1].data || !result[1].data.children) {
+                container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
+                return;
+            }
+
+            const comments = result[1].data.children;
+            comments.slice(0, 8).forEach(comment => {
+                if (comment.kind === 'more') return;
+                const c = comment.data;
+                const commentBox = document.createElement('div');
+                commentBox.className = "bg-white p-2.5 border border-[#edebe9] rounded-sm flex flex-col space-y-1";
+                commentBox.innerHTML = `
+                    <div class="flex justify-between items-center text-[10px] border-b border-[#f3f2f1] pb-1 text-[#605e5c]">
+                        <span class="font-bold text-[#323130]">Re: u/${c.author || 'Anonyme'}</span>
+                        <span>👍 ${c.ups || 0}</span>
+                    </div>
+                    <p class="text-[11px] text-
