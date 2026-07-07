@@ -305,7 +305,7 @@
 
         async function loadComments(permalink) {
             try {
-                const response = await fetch(`https://www.reddit.com${permalink}.json`);
+                const response = await fetch(`https://old.reddit.com/r/${subreddit}.json`);
                 const data = await response.json();
                 const comments = data[1].data.children;
                 const container = document.getElementById('comments-container');
