@@ -153,4 +153,158 @@
             button.onclick = () => window.loadReddit(sub);
             button.className = "flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left";
             button.innerHTML = `<span>r/${sub}</span>`;
-            list.
+            list.appendChild(button);
+        };
+
+        // --- CALLBACKS GLOBAUX JSONP ---
+        // Exécuté quand Reddit renvoie la liste des e-mails
+        window.onRedditPostsLoaded = function(result) {
+            if (result && result.data && result.data.children) {
+                window.currentPosts = result.data.children;
+                window.renderPostsList();
+            } else {
+                document.getElementById('posts-list').innerHTML = '<div class="p-3 text-red-600">Erreur de données.</div>';
+            }
+        };
+
+        // Exécuté quand Reddit renvoie un fil de discussion
+        window.onRedditCommentsLoaded = function(result) {
+            const container = document.getElementById('comments-container');
+            const loader = document.getElementById('comments-loading');
+            if (loader) loader.remove();
+            
+            if (!result || !result[1] || !result[1].data || !result[1].data.children) {
+                container.innerHTML = '<p class="text-xs text-[#a19f9d] italic">Aucune réponse dans ce fil.</p>';
+                return;
+            }
+
+            const comments = result[1].data.children;
+            comments.slice(0, 8).forEach(comment => {
+                if (comment.kind === 'more') return;
+                const c = comment.data;
+                const commentBox = document.createElement('div');
+                commentBox.className = "bg-white p-2.5 border border-[#edebe9] rounded-sm flex flex-col space-y-1";
+                commentBox.innerHTML = `
+                    <div class="flex justify-between items-center text-[10px] border-b border-[#f3f2f1] pb-1 text-[#605e5c]">
+                        <span class="font-bold text-[#323130]">Re: u/${c.author || 'Anonyme'}</span>
+                        <span>👍 ${c.ups || 0}</span>
+                    </div>
+                    <p class="text-[11px] text-[#323130] whitespace-pre-line">${c.body}</p>
+                `;
+                container.appendChild(commentBox);
+            });
+        };
+
+        // --- CHARGEMENT JSONP DIRECT (SANS CORS, SANS PROXY) ---
+        window.loadReddit = function(subreddit) {
+            window.activeSubreddit = subreddit;
+            document.getElementById('current-folder-label').innerText = `r/${subreddit}`;
+            document.getElementById('posts-list').innerHTML = '<div class="p-3 text-[#a19f9d] italic">Connexion au serveur Reddit...</div>';
+            
+            const oldScript = document.getElementById('jsonp-posts');
+            if (oldScript) oldScript.remove();
+
+            const script = document.createElement('script');
+            script.id = 'jsonp-posts';
+            // Le paramètre jsonp force Reddit à répondre sans bloquer la requête
+            script.src = `https://www.reddit.com/r/${subreddit}.json?jsonp=onRedditPostsLoaded&limit=25&nocache=${Date.now()}`;
+            document.body.appendChild(script);
+        };
+
+        window.renderPostsList = function(filterQuery = '') {
+            const listContainer = document.getElementById('posts-list');
+            listContainer.innerHTML = ''; 
+
+            const timeHeader = document.createElement('div');
+            timeHeader.className = "bg-[#f3f2f1] px-3 py-0.5 text-[10px] font-semibold text-[#605e5c] border-b border-[#edebe9] flex items-center space-x-1";
+            timeHeader.innerHTML = `<span>▼ Aujourd'hui</span>`;
+            listContainer.appendChild(timeHeader);
+
+            const filtered = window.currentPosts.filter(post => post.data.title.toLowerCase().includes(filterQuery));
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML += '<div class="p-3 text-[#a19f9d] italic">Aucun courrier trouvé.</div>';
+                return;
+            }
+
+            filtered.forEach((post, index) => {
+                const p = post.data;
+                const isRead = window.readPosts.has(p.id);
+                const item = document.createElement('div');
+                item.className = `p-2 px-3 border-b border-[#f3f2f1] hover:bg-[#f3f2f1] cursor-pointer flex flex-col relative transition ${isRead ? 'border-l-2 border-transparent' : 'border-l-2 border-[#0078d4] bg-[#eff6fc]/30'}`;
+                if(!isRead) item.style.borderLeft = "3px solid #0078d4";
+                item.onclick = () => window.viewPost(p.id, index);
+                
+                item.innerHTML = `
+                    <div class="flex justify-between items-baseline">
+                        <span class="${isRead ? 'text-[#323130]' : 'text-black font-bold'} text-[11px] truncate max-w-[140px]">u/${p.author}</span>
+                        <span class="text-[10px] ${isRead ? 'text-[#a19f9d]' : 'text-[#0078d4] font-semibold'}">12:04</span>
+                    </div>
+                    <h4 class="${isRead ? 'text-[#605e5c]' : 'text-[#0078d4] font-semibold'} text-[11px] truncate">${p.title}</h4>
+                    <p class="text-[10px] text-[#a19f9d] truncate">👍 ${p.ups} | 💬 ${p.num_comments || 0} réponses</p>
+                `;
+                listContainer.appendChild(item);
+            });
+        };
+
+        window.viewPost = function(postId, index) {
+            const post = window.currentPosts.find(p => p.data.id === postId).data;
+            const viewContainer = document.getElementById('post-view');
+            
+            window.readPosts.add(postId);
+            window.renderPostsList(document.getElementById('post-search').value.toLowerCase());
+
+            const colors = ['bg-[#8764b8]', 'bg-[#0078d4]', 'bg-[#107c41]', 'bg-[#b13c2e]'];
+            const randomColor = colors[index % colors.length];
+            const initiales = post.author.substring(0, 2).toUpperCase();
+
+            let mediaHtml = '';
+            if (post.url && (post.url.endsWith('.jpg') || post.url.endsWith('.png') || post.url.endsWith('.gif'))) {
+                mediaHtml = `<div class="my-3"><img src="${post.url}" class="max-w-md rounded border border-[#edebe9]" /></div>`;
+            }
+
+            viewContainer.innerHTML = `
+                <div class="p-4 border-b border-[#edebe9]">
+                    <h1 class="text-lg font-light text-[#323130] mb-3">${post.title}</h1>
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-xs flex-shrink-0">${initiales}</div>
+                            <div>
+                                <div class="text-[11px] font-bold text-[#323130]">u/${post.author} <span class="text-[#a19f9d] font-normal">&lt;noreply@reddit.com&gt;</span></div>
+                                <div class="text-[10px] text-[#605e5c] mt-0.5">À : <span class="text-[#323130]">r/${post.subreddit}</span></div>
+                            </div>
+                        </div>
+                        <div class="text-[11px] text-[#605e5c] flex items-center space-x-3 border border-[#edebe9] px-2 py-1 rounded bg-[#faf9f8]">
+                            <button class="hover:text-[#0078d4]">↩ Répondre</button>
+                            <button class="hover:text-[#0078d4]">↩👪 Répondre à tous</button>
+                            <button class="hover:text-[#0078d4]">➡️ Transférer</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 text-[12px] text-[#323130] bg-white leading-relaxed border-b border-[#f3f2f1]">
+                    ${post.selftext ? `<div class="whitespace-pre-line">${post.selftext}</div>` : ''}
+                    ${mediaHtml}
+                </div>
+                <div class="bg-[#faf9f8] p-4 flex-1 overflow-y-auto">
+                    <h3 class="text-[10px] font-bold text-[#605e5c] uppercase tracking-wider mb-3">💬 Historique des réponses</h3>
+                    <div id="comments-loading" class="text-[11px] italic text-[#a19f9d]">Récupération du fil de discussion...</div>
+                    <div id="comments-container" class="space-y-2"></div>
+                </div>
+            `;
+
+            const oldScript = document.getElementById('jsonp-comments');
+            if (oldScript) oldScript.remove();
+
+            const script = document.createElement('script');
+            script.id = 'jsonp-comments';
+            script.src = `https://www.reddit.com${post.permalink}.json?jsonp=onRedditCommentsLoaded&nocache=${Date.now()}`;
+            document.body.appendChild(script);
+        };
+
+        // Démarrage de l'application
+        window.onload = function() {
+            window.loadReddit('all');
+        };
+    </script>
+</body>
+</html>
