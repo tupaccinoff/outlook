@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nouveau Outlook - Reddit Edition</title>
 
+    <link rel="icon" href="data:,">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -34,13 +35,20 @@
         }
 
         ::-webkit-scrollbar { width: 10px; }
-        ::-webkit-scrollbar-track { background: transparent; }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
         ::-webkit-scrollbar-thumb {
             background: #d1d5db;
             border-radius: 10px;
             border: 3px solid white;
         }
-        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
     </style>
 </head>
 
@@ -237,6 +245,7 @@
     window.lastPostId = null;
     window.isSearchMode = false;
     window.isLoadMoreActive = false;
+    window.requestSerial = 0;
 
     let savedSubs = JSON.parse(localStorage.getItem('outlookCustomSubs') || '[]');
 
@@ -286,6 +295,16 @@
         `;
     }
 
+    function addRawJson(url) {
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}raw_json=1`;
+    }
+
+    function addJsonp(url, callbackName) {
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}raw_json=1&jsonp=${callbackName}`;
+    }
+
     function buildListingUrls(subreddit, isLoadMore) {
         const cleanSub = cleanSubredditName(subreddit || 'all');
         const encodedSub = encodeURIComponent(cleanSub);
@@ -298,11 +317,14 @@
         }
 
         return [
-            `https://pay.reddit.com/r/${encodedSub}/.json?${query}`,
+            `https://www.reddit.com/r/${encodedSub}.json?${query}`,
             `https://www.reddit.com/r/${encodedSub}/.json?${query}`,
-            `https://old.reddit.com/r/${encodedSub}/.json?${query}`,
+            `https://www.reddit.com/r/${encodedSub}/hot.json?${query}`,
             `https://api.reddit.com/r/${encodedSub}?${query}`,
-            `https://api.reddit.com/r/${encodedSub}/hot?${query}`
+            `https://api.reddit.com/r/${encodedSub}/hot?${query}`,
+            `https://old.reddit.com/r/${encodedSub}.json?${query}`,
+            `https://old.reddit.com/r/${encodedSub}/.json?${query}`,
+            `https://pay.reddit.com/r/${encodedSub}/.json?${query}`
         ];
     }
 
@@ -315,12 +337,12 @@
         const query = `q=${encodedQuery}&restrict_sr=on&sort=relevance&t=all&limit=25&cb=${now}`;
 
         return [
-            `https://pay.reddit.com/r/${encodedSub}/search/.json?${query}`,
-            `https://www.reddit.com/r/${encodedSub}/search/.json?${query}`,
-            `https://old.reddit.com/r/${encodedSub}/search/.json?${query}`,
-            `https://pay.reddit.com/r/${encodedSub}/search.json?${query}`,
             `https://www.reddit.com/r/${encodedSub}/search.json?${query}`,
-            `https://api.reddit.com/r/${encodedSub}/search?${query}`
+            `https://www.reddit.com/r/${encodedSub}/search/.json?${query}`,
+            `https://api.reddit.com/r/${encodedSub}/search?${query}`,
+            `https://old.reddit.com/r/${encodedSub}/search.json?${query}`,
+            `https://old.reddit.com/r/${encodedSub}/search/.json?${query}`,
+            `https://pay.reddit.com/r/${encodedSub}/search/.json?${query}`
         ];
     }
 
@@ -329,42 +351,50 @@
         const now = Date.now();
 
         return [
-            `https://pay.reddit.com${cleanPermalink}.json?cb=${now}`,
             `https://www.reddit.com${cleanPermalink}.json?cb=${now}`,
+            `https://api.reddit.com${cleanPermalink}?cb=${now}`,
             `https://old.reddit.com${cleanPermalink}.json?cb=${now}`,
-            `https://api.reddit.com${cleanPermalink}?cb=${now}`
+            `https://pay.reddit.com${cleanPermalink}.json?cb=${now}`
         ];
     }
 
-    function addJsonpParam(url, callbackName) {
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}jsonp=${callbackName}&raw_json=1`;
+    async function tryFetchDirect(url) {
+        const finalUrl = addRawJson(url);
+
+        console.log('Reddit fetch essayé :', finalUrl);
+
+        const response = await fetch(finalUrl, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const text = await response.text();
+        const trimmed = text.trim();
+
+        if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+            throw new Error('Réponse non JSON');
+        }
+
+        return JSON.parse(text);
     }
 
-    window.fetchRedditJSONPFallback = function(urls, successCallback, errorMessage) {
-        let attemptIndex = 0;
-        let finishedGlobally = false;
-
-        function tryNext() {
-            if (finishedGlobally) return;
-
-            if (attemptIndex >= urls.length) {
-                finishedGlobally = true;
-                showListError(errorMessage || "Reddit ne répond pas. Toutes les routes ont échoué.");
-                return;
-            }
-
-            const baseUrl = urls[attemptIndex];
-            attemptIndex++;
-
+    function tryJsonp(url) {
+        return new Promise((resolve, reject) => {
             const callbackName = 'reddit_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
             const script = document.createElement('script');
+            const finalUrl = addJsonp(url, callbackName);
 
-            const finalUrl = addJsonpParam(baseUrl, callbackName);
+            console.log('Reddit JSONP essayé :', finalUrl);
 
-            console.log('Reddit URL essayée :', finalUrl);
-
-            let finishedThisAttempt = false;
+            let done = false;
 
             const cleanup = () => {
                 clearTimeout(timeout);
@@ -375,37 +405,70 @@
                 } catch (e) {}
             };
 
-            const failThisAttempt = () => {
-                if (finishedThisAttempt || finishedGlobally) return;
-                finishedThisAttempt = true;
-                cleanup();
-                tryNext();
-            };
-
             const timeout = setTimeout(() => {
-                failThisAttempt();
+                if (done) return;
+                done = true;
+                cleanup();
+                reject(new Error('timeout JSONP'));
             }, 7000);
 
             window[callbackName] = function(data) {
-                if (finishedThisAttempt || finishedGlobally) return;
-
-                finishedThisAttempt = true;
-                finishedGlobally = true;
-
+                if (done) return;
+                done = true;
                 cleanup();
-                successCallback(data);
+                resolve(data);
             };
 
             script.onerror = function() {
-                failThisAttempt();
+                if (done) return;
+                done = true;
+                cleanup();
+                reject(new Error('script error JSONP'));
             };
 
             script.src = finalUrl;
             document.body.appendChild(script);
+        });
+    }
+
+    async function fetchRedditAny(urls, requestId) {
+        const errors = [];
+
+        for (const url of urls) {
+            if (requestId !== window.requestSerial) {
+                throw new Error('Requête ignorée');
+            }
+
+            try {
+                const data = await tryFetchDirect(url);
+
+                if (data) {
+                    return data;
+                }
+            } catch (error) {
+                errors.push(`fetch ${url} => ${error.message}`);
+            }
         }
 
-        tryNext();
-    };
+        for (const url of urls) {
+            if (requestId !== window.requestSerial) {
+                throw new Error('Requête ignorée');
+            }
+
+            try {
+                const data = await tryJsonp(url);
+
+                if (data) {
+                    return data;
+                }
+            } catch (error) {
+                errors.push(`jsonp ${url} => ${error.message}`);
+            }
+        }
+
+        console.warn('Toutes les routes Reddit ont échoué :', errors);
+        throw new Error('Toutes les routes Reddit ont échoué.');
+    }
 
     window.openModal = () => {
         document.getElementById('outlook-modal').classList.remove('hidden');
@@ -517,7 +580,10 @@
         }
     };
 
-    window.loadReddit = function(subreddit, isLoadMore = false) {
+    window.loadReddit = async function(subreddit, isLoadMore = false) {
+        window.requestSerial++;
+        const requestId = window.requestSerial;
+
         window.isLoadMoreActive = isLoadMore;
 
         const listContainer = document.getElementById('posts-list');
@@ -546,16 +612,24 @@
             }
         }
 
-        const urls = buildListingUrls(cleanSub, isLoadMore);
+        try {
+            const urls = buildListingUrls(cleanSub, isLoadMore);
+            const data = await fetchRedditAny(urls, requestId);
 
-        window.fetchRedditJSONPFallback(
-            urls,
-            window.processPostsData,
-            `Impossible de charger r/${cleanSub}. Subreddit inexistant, privé, bloqué, ou JSONP refusé.`
-        );
+            if (requestId === window.requestSerial) {
+                window.processPostsData(data);
+            }
+        } catch (error) {
+            if (requestId === window.requestSerial) {
+                showListError(`Impossible de charger r/${cleanSub}. Reddit refuse les routes directes ou le subreddit n'existe pas.`);
+            }
+        }
     };
 
-    window.searchSubreddit = function(subreddit, query) {
+    window.searchSubreddit = async function(subreddit, query) {
+        window.requestSerial++;
+        const requestId = window.requestSerial;
+
         window.isSearchMode = true;
         window.isLoadMoreActive = false;
 
@@ -568,13 +642,18 @@
             </div>
         `;
 
-        const urls = buildSearchUrls(cleanSub, query);
+        try {
+            const urls = buildSearchUrls(cleanSub, query);
+            const data = await fetchRedditAny(urls, requestId);
 
-        window.fetchRedditJSONPFallback(
-            urls,
-            window.processPostsData,
-            `Recherche impossible dans r/${cleanSub}.`
-        );
+            if (requestId === window.requestSerial) {
+                window.processPostsData(data);
+            }
+        } catch (error) {
+            if (requestId === window.requestSerial) {
+                showListError(`Recherche impossible dans r/${cleanSub}.`);
+            }
+        }
     };
 
     window.renderPostsList = function() {
@@ -651,7 +730,7 @@
         }
     };
 
-    window.viewPost = function(postId, index) {
+    window.viewPost = async function(postId, index) {
         const post = window.currentPosts.find(p => p.id === postId);
 
         if (!post) return;
@@ -770,25 +849,20 @@
             </div>
         `;
 
-        const urls = buildCommentsUrls(post.permalink);
+        const commentsContainer = document.getElementById('comments-container');
 
-        window.fetchRedditJSONPFallback(
-            urls,
-            function(data) {
-                const container = document.getElementById('comments-container');
+        try {
+            const urls = buildCommentsUrls(post.permalink);
+            const data = await fetchRedditAny(urls, window.requestSerial);
 
-                try {
-                    if (data && data[1] && data[1].data && data[1].data.children.length > 0) {
-                        container.innerHTML = window.buildCommentsTree(data[1].data.children, 0);
-                    } else {
-                        container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
-                    }
-                } catch (error) {
-                    container.innerHTML = '<p class="text-xs text-red-500 italic">Erreur de lecture des commentaires.</p>';
-                }
-            },
-            "Commentaires Reddit impossibles à charger."
-        );
+            if (data && data[1] && data[1].data && data[1].data.children.length > 0) {
+                commentsContainer.innerHTML = window.buildCommentsTree(data[1].data.children, 0);
+            } else {
+                commentsContainer.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
+            }
+        } catch (error) {
+            commentsContainer.innerHTML = '<p class="text-xs text-red-500 italic">Commentaires Reddit impossibles à charger.</p>';
+        }
     };
 
     window.buildCommentsTree = function(comments, depth = 0) {
