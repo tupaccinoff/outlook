@@ -34,7 +34,7 @@
 
         <div class="w-2/5 max-w-xl relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500 text-sm"></i>
-            <input type="text" id="post-search" placeholder="Rechercher" 
+            <input type="text" id="post-search" placeholder="Rechercher sur le serveur (puis Entrée)..." 
                    class="w-full pl-9 pr-4 py-1.5 bg-[#f3f2f1] placeholder-gray-500 border border-transparent rounded-full focus:outline-none focus:bg-white focus:border-[#0f6cbd] focus:shadow-sm text-sm transition-all shadow-sm">
         </div>
 
@@ -188,7 +188,8 @@
         window.currentPosts = [];
         window.readPosts = new Set(JSON.parse(localStorage.getItem('outlookReadPosts') || '[]'));
         window.activeSubreddit = 'all';
-        window.lastPostId = null; // Mémoire du dernier post pour la page suivante
+        window.lastPostId = null;
+        window.isSearchMode = false;
 
         let savedSubs = JSON.parse(localStorage.getItem('outlookCustomSubs') || '[]');
         if (savedSubs.length === 0) savedSubs = ['france', 'gaming'];
@@ -209,20 +210,31 @@
                     window.saveSubsState();
                     window.renderSubredditsList();
                 }
+                document.getElementById('post-search').value = '';
                 window.loadReddit(sub); 
                 window.closeModal(); 
             }
         };
         
         document.getElementById('modal-sub-input').addEventListener('keypress', e => { if (e.key === 'Enter') window.submitModal(); });
-        document.getElementById('post-search').addEventListener('input', e => window.renderPostsList(e.target.value.toLowerCase().trim()));
+        
+        document.getElementById('post-search').addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                const query = e.target.value.trim();
+                if (query === '') {
+                    window.loadReddit(window.activeSubreddit);
+                } else {
+                    window.searchSubreddit(window.activeSubreddit, query);
+                }
+            }
+        });
 
         window.renderSubredditsList = () => {
             const list = document.getElementById('subreddits-list');
             list.innerHTML = ''; 
             window.customSubs.forEach(sub => {
                 const button = document.createElement('button');
-                button.onclick = () => window.loadReddit(sub);
+                button.onclick = () => { document.getElementById('post-search').value = ''; window.loadReddit(sub); };
                 button.className = `flex items-center px-3 py-1.5 w-full text-left rounded-md transition group ${sub === window.activeSubreddit && sub !== 'all' ? 'ms-bg-blue-light text-[#0f6cbd] font-semibold' : 'text-gray-600 hover:bg-gray-100'}`;
                 button.innerHTML = `
                     <i class="fa-regular fa-folder mr-2 ${sub === window.activeSubreddit && sub !== 'all' ? 'text-[#0f6cbd]' : 'text-gray-400'}"></i>
@@ -240,12 +252,35 @@
             if (window.activeSubreddit === sub) window.loadReddit('all');
         };
 
-        // FONCTION DE CHARGEMENT AMÉLIORÉE (Gère le chargement initial ET la suite)
+        window.searchSubreddit = async function(subreddit, query) {
+            window.isSearchMode = true;
+            const listContainer = document.getElementById('posts-list');
+            listContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-[#0f6cbd] mr-2"></i>Recherche sur le serveur...</div>';
+            
+            try {
+                const searchFeed = `https://www.reddit.com/r/${subreddit}/search.rss?q=${encodeURIComponent(query)}&restrict_sr=on&sort=relevance&t=all`;
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(searchFeed)}`;
+                
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    window.currentPosts = data.items;
+                    window.lastPostId = null;
+                    window.renderPostsList();
+                } else {
+                    listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Aucun résultat trouvé sur le serveur.</div>';
+                }
+            } catch (error) {
+                listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Le serveur de recherche est injoignable.</div>';
+            }
+        };
+
         window.loadReddit = async function(subreddit, isLoadMore = false) {
             const listContainer = document.getElementById('posts-list');
             
-            // Si c'est un nouveau dossier, on réinitialise tout
             if (!isLoadMore) {
+                window.isSearchMode = false;
                 window.activeSubreddit = subreddit;
                 window.renderSubredditsList(); 
                 document.getElementById('current-folder-label').innerText = `r/${subreddit}`;
@@ -253,26 +288,19 @@
                 window.currentPosts = [];
                 window.lastPostId = null;
             } else {
-                // Si c'est "Charger la suite", on anime juste le bouton
                 const btn = document.getElementById('btn-load-more');
                 if (btn) btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Récupération...';
             }
             
             try {
-                // Création dynamique de l'URL pour tromper le cache du proxy RSS et gérer la pagination Reddit
                 let rssFeed = `https://www.reddit.com/r/${subreddit}.rss?cb=${Date.now()}`;
-                
-                // Si on a un ID de fin mémorisé, on dit à Reddit de donner les posts "après" celui-là !
-                if (isLoadMore && window.lastPostId) {
-                    rssFeed += `&after=${window.lastPostId}`;
-                }
+                if (isLoadMore && window.lastPostId) rssFeed += `&after=${window.lastPostId}`;
 
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssFeed)}`;
                 const response = await fetch(apiUrl);
                 const data = await response.json();
                 
                 if (data.status === 'ok') {
-                    // On ajoute les nouveaux posts à la liste (sans écraser les anciens)
                     if (isLoadMore) {
                         const newPosts = data.items.filter(newItem => !window.currentPosts.some(p => p.link === newItem.link));
                         window.currentPosts = [...window.currentPosts, ...newPosts];
@@ -280,7 +308,6 @@
                         window.currentPosts = data.items;
                     }
 
-                    // On sauvegarde le code secret (t3_...) du tout dernier post pour la prochaine page
                     if (window.currentPosts.length > 0) {
                         const lastPostLink = window.currentPosts[window.currentPosts.length - 1].link;
                         const matchId = lastPostLink.match(/\/comments\/([a-z0-9]+)\//i);
@@ -296,23 +323,21 @@
             }
         };
 
-        window.renderPostsList = function(filterQuery = '') {
+        window.renderPostsList = function() {
             const listContainer = document.getElementById('posts-list');
             listContainer.innerHTML = ''; 
 
             const timeHeader = document.createElement('div');
             timeHeader.className = "px-3 py-1.5 text-xs font-semibold text-gray-500 flex items-center space-x-1 mt-1 sticky top-0 z-0 bg-white/90 backdrop-blur-sm";
-            timeHeader.innerHTML = `<i class="fa-solid fa-angle-down text-[10px]"></i> <span>Aujourd'hui</span>`;
+            timeHeader.innerHTML = `<i class="fa-solid fa-angle-down text-[10px]"></i> <span>${window.isSearchMode ? 'Résultats de recherche' : 'Aujourd\'hui'}</span>`;
             listContainer.appendChild(timeHeader);
 
-            const filtered = window.currentPosts.filter(post => post.title.toLowerCase().includes(filterQuery));
-
-            if (filtered.length === 0) {
+            if (window.currentPosts.length === 0) {
                 listContainer.innerHTML += '<div class="p-4 text-center text-gray-400 text-sm">Aucun courrier trouvé.</div>';
                 return;
             }
 
-            filtered.forEach((post, index) => {
+            window.currentPosts.forEach((post, index) => {
                 const isRead = window.readPosts.has(post.link);
                 const item = document.createElement('div');
                 item.className = `p-3 rounded-lg cursor-pointer transition flex items-start space-x-3 border border-transparent ${isRead ? 'hover:bg-gray-100' : 'bg-white hover:shadow-sm hover:border-gray-200'}`;
@@ -338,8 +363,7 @@
                 listContainer.appendChild(item);
             });
 
-            // AJOUT DU BOUTON "CHARGER LA SUITE" TOUT EN BAS DE LA LISTE
-            if (window.lastPostId && filterQuery === '') {
+            if (window.lastPostId && !window.isSearchMode) {
                 const loadMoreBtn = document.createElement('div');
                 loadMoreBtn.className = "p-2 mt-2";
                 loadMoreBtn.innerHTML = `<button id="btn-load-more" onclick="window.loadReddit('${window.activeSubreddit}', true)" class="w-full py-2 bg-[#f3f2f1] hover:bg-gray-200 text-[#0f6cbd] text-xs font-semibold rounded-lg transition border border-gray-200">Charger plus de courriers...</button>`;
@@ -353,7 +377,7 @@
             
             window.readPosts.add(postLink);
             window.saveReadState(); 
-            window.renderPostsList(document.getElementById('post-search').value.toLowerCase());
+            window.renderPostsList();
 
             const colors = ['bg-[#6264A7]', 'bg-[#D13438]', 'bg-[#038387]', 'bg-[#498205]', 'bg-[#8764B8]'];
             const randomColor = colors[index % colors.length];
@@ -394,7 +418,7 @@
                                 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-regular fa-comments mr-2"></i> Historique de la conversation</h3>
                                 <a href="${post.link}" target="_blank" class="text-xs text-[#0f6cbd] hover:underline font-medium"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Ouvrir dans le navigateur</a>
                             </div>
-                            <div id="comments-container" class="space-y-4">
+                            <div id="comments-container" class="space-y-4 pb-10">
                                 <div class="text-xs italic text-gray-400 flex items-center"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Connexion au serveur de discussion...</div>
                             </div>
                         </div>
@@ -404,12 +428,13 @@
             window.loadComments(postLink);
         };
 
+        // L'ASTUCE DE L'ARBORESCENCE EST ICI
         window.loadComments = async function(postLink) {
             const container = document.getElementById('comments-container');
             try {
                 let rssLink = postLink;
                 if (!rssLink.endsWith('/')) rssLink += '/';
-                rssLink += `.rss?cb=${Date.now()}`; // Pour casser le cache sur les commentaires aussi
+                rssLink += `.rss?cb=${Date.now()}`; 
 
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssLink)}`;
                 const response = await fetch(apiUrl);
@@ -417,6 +442,8 @@
 
                 if (data.status === 'ok' && data.items.length > 0) {
                     container.innerHTML = '';
+                    
+                    // On filtre le post original pour ne garder que les commentaires
                     const comments = data.items.filter(item => item.title.includes('Comment') || item.title.includes('by'));
                     const actualComments = comments.length > 0 ? comments : data.items.slice(1);
 
@@ -425,21 +452,49 @@
                         return;
                     }
 
-                    actualComments.slice(0, 15).forEach(c => {
-                        const commentBox = document.createElement('div');
-                        commentBox.className = "bg-white p-4 border border-gray-200 rounded-lg shadow-sm flex flex-col space-y-2";
+                    actualComments.slice(0, 30).forEach(c => {
+                        // 1. L'ALGORITHME DE DÉTECTION DES RÉPONSES
+                        // On cherche si le titre contient la mention d'une réponse à un autre commentaire
+                        let isReply = c.title.toLowerCase().includes("on 'comment by");
+                        let parentAuthor = null;
                         
+                        if (isReply) {
+                            // Extraction du nom du parent via Regex
+                            const match = c.title.match(/on ['"]?Comment by (?:u\/)?([^'\s]+)/i);
+                            if (match) parentAuthor = match[1];
+                        }
+
+                        // Extraction du nom de l'auteur du commentaire
                         let author = c.author || "Anonyme";
-                        if (author === "Anonyme" && c.title.includes(' by ')) { author = c.title.split(' by ')[1] || "Anonyme"; }
+                        if (author === "Anonyme" && c.title.includes(' by ')) { 
+                            author = c.title.split(' by ')[1].split(' on ')[0] || "Anonyme"; 
+                        }
                         let pubTime = new Date(c.pubDate).toLocaleString('fr-FR', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'});
+
+                        const commentBox = document.createElement('div');
+                        
+                        // 2. L'APPLICATION DE L'ARBORESCENCE VISUELLE
+                        // Si c'est une réponse, on ajoute une marge à gauche et une bordure bleue
+                        if (isReply) {
+                            commentBox.className = "bg-white p-4 border border-gray-200 rounded-lg shadow-sm flex flex-col space-y-2 ml-10 border-l-4 border-l-blue-200 relative";
+                        } else {
+                            commentBox.className = "bg-white p-4 border border-gray-200 rounded-lg shadow-sm flex flex-col space-y-2";
+                        }
+
+                        // Construction du header du commentaire
+                        let replyBadge = '';
+                        if (isReply && parentAuthor) {
+                            replyBadge = `<span class="text-[10px] text-gray-400 ml-3"><i class="fa-solid fa-reply text-[#0f6cbd] mr-1 transform rotate-180 inline-block"></i>en réponse à <span class="font-semibold text-gray-600">${parentAuthor}</span></span>`;
+                        }
 
                         commentBox.innerHTML = `
                             <div class="flex justify-between items-center text-xs border-b border-gray-100 pb-2">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-6 h-6 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center font-bold text-[9px]">${author.substring(0,2).toUpperCase()}</div>
+                                <div class="flex items-center">
+                                    <div class="w-6 h-6 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center font-bold text-[9px] mr-2 shrink-0">${author.substring(0,2).toUpperCase()}</div>
                                     <span class="font-semibold text-gray-800">${author}</span>
+                                    ${replyBadge}
                                 </div>
-                                <span class="text-gray-500">${pubTime}</span>
+                                <span class="text-gray-500 shrink-0 ml-2">${pubTime}</span>
                             </div>
                             <div class="text-[13px] text-gray-700 rss-content leading-relaxed">
                                 ${c.content}
@@ -456,6 +511,7 @@
         };
 
         window.onload = function() {
+            document.getElementById('post-search').value = '';
             window.renderSubredditsList();
             window.loadReddit('all');
         };
