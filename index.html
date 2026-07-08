@@ -15,8 +15,6 @@
         .rss-content img { max-width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #e5e7eb; }
         .rss-content a { color: #0f6cbd; text-decoration: none; }
         .rss-content a:hover { text-decoration: underline; }
-        .rss-content blockquote { border-left: 3px solid #0f6cbd; padding-left: 10px; color: #4b5563; margin: 10px 0; background: #f9fafb; padding: 10px; border-radius: 4px; }
-        .rss-content p { margin-bottom: 10px; }
         
         ::-webkit-scrollbar { width: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -34,7 +32,7 @@
 
         <div class="w-2/5 max-w-xl relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500 text-sm"></i>
-            <input type="text" id="post-search" placeholder="Rechercher sur le serveur (puis Entrée)..." 
+            <input type="text" id="post-search" placeholder="Filtrer les courriers..." 
                    class="w-full pl-9 pr-4 py-1.5 bg-[#f3f2f1] placeholder-gray-500 border border-transparent rounded-full focus:outline-none focus:bg-white focus:border-[#0f6cbd] focus:shadow-sm text-sm transition-all shadow-sm">
         </div>
 
@@ -164,14 +162,10 @@
     <div id="outlook-modal" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm transition-opacity">
         <div class="bg-white w-[500px] rounded-xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
             <div class="px-4 py-3 flex justify-between items-center border-b border-gray-100">
-                <span class="font-semibold text-sm text-gray-800">Ajouter un dossier de flux Reddit</span>
+                <span class="font-semibold text-sm text-gray-800">Ajouter un dossier Exchange (JSON)</span>
                 <button onclick="window.closeModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div class="p-5 flex flex-col space-y-4">
-                <div class="flex items-center border-b border-gray-200 pb-2">
-                    <span class="w-16 text-sm text-gray-500 font-medium">Serveur :</span>
-                    <div class="bg-blue-50 text-[#0f6cbd] px-2 py-1 rounded border border-blue-100 font-semibold text-xs">RSS Exchange</div>
-                </div>
                 <div class="flex items-center border-b border-gray-200 pb-2">
                     <span class="w-16 text-sm text-gray-500 font-medium">Subreddit :</span>
                     <input type="text" id="modal-sub-input" placeholder="Ex: france, askreddit, pics..." class="flex-1 outline-none font-semibold text-gray-800 placeholder-gray-300">
@@ -189,7 +183,6 @@
         window.readPosts = new Set(JSON.parse(localStorage.getItem('outlookReadPosts') || '[]'));
         window.activeSubreddit = 'all';
         window.lastPostId = null;
-        window.isSearchMode = false;
 
         let savedSubs = JSON.parse(localStorage.getItem('outlookCustomSubs') || '[]');
         if (savedSubs.length === 0) savedSubs = ['france', 'gaming'];
@@ -217,17 +210,7 @@
         };
         
         document.getElementById('modal-sub-input').addEventListener('keypress', e => { if (e.key === 'Enter') window.submitModal(); });
-        
-        document.getElementById('post-search').addEventListener('keypress', e => {
-            if (e.key === 'Enter') {
-                const query = e.target.value.trim();
-                if (query === '') {
-                    window.loadReddit(window.activeSubreddit);
-                } else {
-                    window.searchSubreddit(window.activeSubreddit, query);
-                }
-            }
-        });
+        document.getElementById('post-search').addEventListener('input', e => window.renderPostsList(e.target.value.toLowerCase().trim()));
 
         window.renderSubredditsList = () => {
             const list = document.getElementById('subreddits-list');
@@ -252,39 +235,15 @@
             if (window.activeSubreddit === sub) window.loadReddit('all');
         };
 
-        window.searchSubreddit = async function(subreddit, query) {
-            window.isSearchMode = true;
-            const listContainer = document.getElementById('posts-list');
-            listContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-[#0f6cbd] mr-2"></i>Recherche sur le serveur...</div>';
-            
-            try {
-                const searchFeed = `https://www.reddit.com/r/${subreddit}/search.rss?q=${encodeURIComponent(query)}&restrict_sr=on&sort=relevance&t=all`;
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(searchFeed)}`;
-                
-                const response = await fetch(apiUrl);
-                const data = await response.json();
-                
-                if (data.status === 'ok') {
-                    window.currentPosts = data.items;
-                    window.lastPostId = null;
-                    window.renderPostsList();
-                } else {
-                    listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Aucun résultat trouvé sur le serveur.</div>';
-                }
-            } catch (error) {
-                listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Le serveur de recherche est injoignable.</div>';
-            }
-        };
-
+        // CHARGEMENT VIA API JSON ET PROXY STABLE
         window.loadReddit = async function(subreddit, isLoadMore = false) {
             const listContainer = document.getElementById('posts-list');
             
             if (!isLoadMore) {
-                window.isSearchMode = false;
                 window.activeSubreddit = subreddit;
                 window.renderSubredditsList(); 
                 document.getElementById('current-folder-label').innerText = `r/${subreddit}`;
-                listContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-[#0f6cbd] mr-2"></i>Chargement...</div>';
+                listContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-[#0f6cbd] mr-2"></i>Synchronisation JSON (peut prendre 3 sec)...</div>';
                 window.currentPosts = [];
                 window.lastPostId = null;
             } else {
@@ -293,61 +252,61 @@
             }
             
             try {
-                let rssFeed = `https://www.reddit.com/r/${subreddit}.rss?cb=${Date.now()}`;
-                if (isLoadMore && window.lastPostId) rssFeed += `&after=${window.lastPostId}`;
-
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssFeed)}`;
-                const response = await fetch(apiUrl);
+                let targetUrl = `https://www.reddit.com/r/${subreddit}.json?limit=25`;
+                if (isLoadMore && window.lastPostId) targetUrl += `&after=${window.lastPostId}`;
+                
+                // Proxy CodeTabs (Lent mais fiable face au CORS)
+                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
+                
+                const response = await fetch(proxyUrl);
                 const data = await response.json();
                 
-                if (data.status === 'ok') {
+                if (data && data.data && data.data.children) {
+                    const postsData = data.data.children.map(child => child.data);
+                    
                     if (isLoadMore) {
-                        const newPosts = data.items.filter(newItem => !window.currentPosts.some(p => p.link === newItem.link));
-                        window.currentPosts = [...window.currentPosts, ...newPosts];
+                        window.currentPosts = [...window.currentPosts, ...postsData];
                     } else {
-                        window.currentPosts = data.items;
+                        window.currentPosts = postsData;
                     }
 
-                    if (window.currentPosts.length > 0) {
-                        const lastPostLink = window.currentPosts[window.currentPosts.length - 1].link;
-                        const matchId = lastPostLink.match(/\/comments\/([a-z0-9]+)\//i);
-                        window.lastPostId = matchId ? `t3_${matchId[1]}` : null;
-                    }
-
+                    window.lastPostId = data.data.after; // Reddit fournit directement l'ID suivant dans le JSON !
                     window.renderPostsList();
                 } else {
                     if (!isLoadMore) listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Dossier introuvable ou privé.</div>';
                 }
             } catch (error) {
-                if (!isLoadMore) listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Erreur de synchronisation serveur.</div>';
+                if (!isLoadMore) listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Le serveur mandataire (Proxy) est surchargé. Réessayez.</div>';
             }
         };
 
-        window.renderPostsList = function() {
+        window.renderPostsList = function(filterQuery = '') {
             const listContainer = document.getElementById('posts-list');
             listContainer.innerHTML = ''; 
 
             const timeHeader = document.createElement('div');
             timeHeader.className = "px-3 py-1.5 text-xs font-semibold text-gray-500 flex items-center space-x-1 mt-1 sticky top-0 z-0 bg-white/90 backdrop-blur-sm";
-            timeHeader.innerHTML = `<i class="fa-solid fa-angle-down text-[10px]"></i> <span>${window.isSearchMode ? 'Résultats de recherche' : 'Aujourd\'hui'}</span>`;
+            timeHeader.innerHTML = `<i class="fa-solid fa-angle-down text-[10px]"></i> <span>Aujourd'hui</span>`;
             listContainer.appendChild(timeHeader);
 
-            if (window.currentPosts.length === 0) {
+            const filtered = window.currentPosts.filter(post => post.title.toLowerCase().includes(filterQuery));
+
+            if (filtered.length === 0) {
                 listContainer.innerHTML += '<div class="p-4 text-center text-gray-400 text-sm">Aucun courrier trouvé.</div>';
                 return;
             }
 
-            window.currentPosts.forEach((post, index) => {
-                const isRead = window.readPosts.has(post.link);
+            filtered.forEach((post, index) => {
+                const isRead = window.readPosts.has(post.id);
                 const item = document.createElement('div');
                 item.className = `p-3 rounded-lg cursor-pointer transition flex items-start space-x-3 border border-transparent ${isRead ? 'hover:bg-gray-100' : 'bg-white hover:shadow-sm hover:border-gray-200'}`;
-                item.onclick = () => window.viewPost(post.link, index);
+                item.onclick = () => window.viewPost(post.id, index);
                 
                 let authorName = post.author || "Anonyme";
                 const colors = ['bg-[#6264A7]', 'bg-[#D13438]', 'bg-[#038387]', 'bg-[#498205]', 'bg-[#8764B8]'];
                 const randomColor = colors[index % colors.length];
-                let initiales = authorName.length > 2 ? authorName.replace('/u/', '').substring(0, 2).toUpperCase() : "RE";
-                let pubTime = new Date(post.pubDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                let initiales = authorName.length > 2 ? authorName.substring(0, 2).toUpperCase() : "RE";
+                let pubTime = new Date(post.created_utc * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
                 item.innerHTML = `
                     <div class="w-8 h-8 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-[11px] shrink-0 mt-0.5">${initiales}</div>
@@ -357,13 +316,13 @@
                             <span class="text-xs ${isRead ? 'text-gray-500' : 'text-[#0f6cbd] font-semibold'}">${pubTime}</span>
                         </div>
                         <h4 class="${isRead ? 'text-gray-600 font-normal' : 'text-[#0f6cbd] font-semibold'} text-[12px] truncate leading-tight">${post.title}</h4>
-                        <p class="text-[11px] text-gray-500 truncate mt-0.5">Cliquez pour afficher le contenu et les réponses du fil.</p>
+                        <p class="text-[11px] text-gray-500 truncate mt-0.5">👍 ${post.ups} | 💬 ${post.num_comments} réponses</p>
                     </div>
                 `;
                 listContainer.appendChild(item);
             });
 
-            if (window.lastPostId && !window.isSearchMode) {
+            if (window.lastPostId && filterQuery === '') {
                 const loadMoreBtn = document.createElement('div');
                 loadMoreBtn.className = "p-2 mt-2";
                 loadMoreBtn.innerHTML = `<button id="btn-load-more" onclick="window.loadReddit('${window.activeSubreddit}', true)" class="w-full py-2 bg-[#f3f2f1] hover:bg-gray-200 text-[#0f6cbd] text-xs font-semibold rounded-lg transition border border-gray-200">Charger plus de courriers...</button>`;
@@ -371,19 +330,24 @@
             }
         };
 
-        window.viewPost = function(postLink, index) {
-            const post = window.currentPosts.find(p => p.link === postLink);
+        window.viewPost = function(postId, index) {
+            const post = window.currentPosts.find(p => p.id === postId);
             const viewContainer = document.getElementById('post-view');
             
-            window.readPosts.add(postLink);
+            window.readPosts.add(postId);
             window.saveReadState(); 
-            window.renderPostsList();
+            window.renderPostsList(document.getElementById('post-search').value.toLowerCase());
 
             const colors = ['bg-[#6264A7]', 'bg-[#D13438]', 'bg-[#038387]', 'bg-[#498205]', 'bg-[#8764B8]'];
             const randomColor = colors[index % colors.length];
             let authorName = post.author || "Anonyme";
-            let initiales = authorName.length > 2 ? authorName.replace('/u/', '').substring(0, 2).toUpperCase() : "RE";
-            let pubDate = new Date(post.pubDate).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            let initiales = authorName.length > 2 ? authorName.substring(0, 2).toUpperCase() : "RE";
+            let pubDate = new Date(post.created_utc * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            let mediaHtml = '';
+            if (post.url && (post.url.endsWith('.jpg') || post.url.endsWith('.png') || post.url.endsWith('.gif'))) {
+                mediaHtml = `<div class="mt-4"><img src="${post.url}" class="max-w-xl rounded border border-gray-200" /></div>`;
+            }
 
             viewContainer.innerHTML = `
                 <div class="bg-white flex flex-col h-full shadow-sm rounded-tl-lg overflow-hidden border-l border-t border-gray-200 m-2 mt-0">
@@ -402,7 +366,6 @@
                                 <div class="flex space-x-1">
                                     <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition"><i class="fa-solid fa-reply"></i></button>
                                     <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition"><i class="fa-solid fa-reply-all"></i></button>
-                                    <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition"><i class="fa-solid fa-share"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -410,105 +373,89 @@
                     
                     <div class="flex-1 overflow-y-auto">
                         <div class="px-8 py-6 text-[14px] text-gray-800 leading-relaxed rss-content max-w-4xl">
-                            ${post.content || post.description}
+                            ${post.selftext_html ? decodeHTMLEntities(post.selftext_html) : post.selftext}
+                            ${mediaHtml}
                         </div>
                         <div class="border-t border-gray-200 mx-8 my-4"></div>
                         <div class="px-8 pb-8">
                             <div class="flex items-center justify-between mb-4 mt-2">
                                 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-regular fa-comments mr-2"></i> Historique de la conversation</h3>
-                                <a href="${post.link}" target="_blank" class="text-xs text-[#0f6cbd] hover:underline font-medium"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Ouvrir dans le navigateur</a>
+                                <a href="https://reddit.com${post.permalink}" target="_blank" class="text-xs text-[#0f6cbd] hover:underline font-medium"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Ouvrir sur Reddit</a>
                             </div>
-                            <div id="comments-container" class="space-y-4 pb-10">
-                                <div class="text-xs italic text-gray-400 flex items-center"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Connexion au serveur de discussion...</div>
+                            <div id="comments-container" class="space-y-3 pb-10">
+                                <div class="text-xs italic text-gray-400 flex items-center"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Téléchargement de l'arborescence complète...</div>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
-            window.loadComments(postLink);
+            window.loadComments(post.permalink);
         };
 
-        // L'ASTUCE DE L'ARBORESCENCE EST ICI
-        window.loadComments = async function(postLink) {
+        // FONCTION RÉCURSIVE DE CRÉATION D'ARBORESCENCE HTML
+        window.buildCommentsTree = function(comments, depth = 0) {
+            let html = '';
+            comments.forEach(c => {
+                if (c.kind === 'more' || !c.data || !c.data.author) return;
+                
+                const author = c.data.author;
+                const bodyHTML = c.data.body_html ? decodeHTMLEntities(c.data.body_html) : c.data.body;
+                const pubTime = new Date(c.data.created_utc * 1000).toLocaleString('fr-FR', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'});
+                
+                // Décalage visuel à gauche pour montrer la réponse (indentation)
+                const margin = depth > 0 ? `ml-${Math.min(depth * 6, 24)} border-l-4 border-blue-200 pl-4` : 'border border-gray-200';
+
+                html += `
+                    <div class="bg-white p-3 rounded-lg shadow-sm flex flex-col space-y-2 mb-3 ${margin}">
+                        <div class="flex justify-between items-center text-xs border-b border-gray-100 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center font-bold text-[9px]">${author.substring(0,2).toUpperCase()}</div>
+                                <span class="font-semibold text-gray-800">${author}</span>
+                                ${depth > 0 ? `<span class="text-[10px] text-gray-400 ml-2"><i class="fa-solid fa-reply text-[#0f6cbd] mr-1 transform rotate-180 inline-block"></i>Réponse</span>` : ''}
+                            </div>
+                            <span class="text-gray-500">${pubTime}</span>
+                        </div>
+                        <div class="text-[13px] text-gray-700 rss-content leading-relaxed">
+                            ${bodyHTML}
+                        </div>
+                    </div>
+                `;
+
+                // Si le commentaire a des réponses enfants, on rappelle la fonction (Récursivité)
+                if (c.data.replies && c.data.replies.data && c.data.replies.data.children) {
+                    html += window.buildCommentsTree(c.data.replies.data.children, depth + 1);
+                }
+            });
+            return html;
+        };
+
+        window.loadComments = async function(permalink) {
             const container = document.getElementById('comments-container');
             try {
-                let rssLink = postLink;
-                if (!rssLink.endsWith('/')) rssLink += '/';
-                rssLink += `.rss?cb=${Date.now()}`; 
+                const targetUrl = `https://www.reddit.com${permalink}.json`;
+                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
 
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssLink)}`;
-                const response = await fetch(apiUrl);
+                const response = await fetch(proxyUrl);
                 const data = await response.json();
 
-                if (data.status === 'ok' && data.items.length > 0) {
-                    container.innerHTML = '';
-                    
-                    // On filtre le post original pour ne garder que les commentaires
-                    const comments = data.items.filter(item => item.title.includes('Comment') || item.title.includes('by'));
-                    const actualComments = comments.length > 0 ? comments : data.items.slice(1);
-
-                    if (actualComments.length === 0) {
-                        container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
-                        return;
-                    }
-
-                    actualComments.slice(0, 30).forEach(c => {
-                        // 1. L'ALGORITHME DE DÉTECTION DES RÉPONSES
-                        // On cherche si le titre contient la mention d'une réponse à un autre commentaire
-                        let isReply = c.title.toLowerCase().includes("on 'comment by");
-                        let parentAuthor = null;
-                        
-                        if (isReply) {
-                            // Extraction du nom du parent via Regex
-                            const match = c.title.match(/on ['"]?Comment by (?:u\/)?([^'\s]+)/i);
-                            if (match) parentAuthor = match[1];
-                        }
-
-                        // Extraction du nom de l'auteur du commentaire
-                        let author = c.author || "Anonyme";
-                        if (author === "Anonyme" && c.title.includes(' by ')) { 
-                            author = c.title.split(' by ')[1].split(' on ')[0] || "Anonyme"; 
-                        }
-                        let pubTime = new Date(c.pubDate).toLocaleString('fr-FR', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'});
-
-                        const commentBox = document.createElement('div');
-                        
-                        // 2. L'APPLICATION DE L'ARBORESCENCE VISUELLE
-                        // Si c'est une réponse, on ajoute une marge à gauche et une bordure bleue
-                        if (isReply) {
-                            commentBox.className = "bg-white p-4 border border-gray-200 rounded-lg shadow-sm flex flex-col space-y-2 ml-10 border-l-4 border-l-blue-200 relative";
-                        } else {
-                            commentBox.className = "bg-white p-4 border border-gray-200 rounded-lg shadow-sm flex flex-col space-y-2";
-                        }
-
-                        // Construction du header du commentaire
-                        let replyBadge = '';
-                        if (isReply && parentAuthor) {
-                            replyBadge = `<span class="text-[10px] text-gray-400 ml-3"><i class="fa-solid fa-reply text-[#0f6cbd] mr-1 transform rotate-180 inline-block"></i>en réponse à <span class="font-semibold text-gray-600">${parentAuthor}</span></span>`;
-                        }
-
-                        commentBox.innerHTML = `
-                            <div class="flex justify-between items-center text-xs border-b border-gray-100 pb-2">
-                                <div class="flex items-center">
-                                    <div class="w-6 h-6 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center font-bold text-[9px] mr-2 shrink-0">${author.substring(0,2).toUpperCase()}</div>
-                                    <span class="font-semibold text-gray-800">${author}</span>
-                                    ${replyBadge}
-                                </div>
-                                <span class="text-gray-500 shrink-0 ml-2">${pubTime}</span>
-                            </div>
-                            <div class="text-[13px] text-gray-700 rss-content leading-relaxed">
-                                ${c.content}
-                            </div>
-                        `;
-                        container.appendChild(commentBox);
-                    });
+                if (data && data[1] && data[1].data && data[1].data.children.length > 0) {
+                    const comments = data[1].data.children;
+                    // On lance la construction de l'arbre
+                    container.innerHTML = window.buildCommentsTree(comments, 0);
                 } else {
-                    container.innerHTML = '<p class="text-xs text-red-500 italic">Erreur de lecture des réponses.</p>';
+                    container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
                 }
             } catch (error) {
-                container.innerHTML = '<p class="text-xs text-red-500 italic">Serveur indisponible.</p>';
+                container.innerHTML = '<p class="text-xs text-red-500 italic">Serveur de commentaires temporairement injoignable.</p>';
             }
         };
+
+        // Utilitaire pour nettoyer le HTML renvoyé par le JSON de Reddit
+        function decodeHTMLEntities(text) {
+            var textArea = document.createElement('textarea');
+            textArea.innerHTML = text;
+            return textArea.value;
+        }
 
         window.onload = function() {
             document.getElementById('post-search').value = '';
