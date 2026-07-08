@@ -3,137 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Microsoft Outlook</title>
+    <title>Nouveau Outlook - Reddit Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
-        .outlook-blue { color: #0078d4; }
-        .outlook-bg-blue { background-color: #0078d4; }
-        /* Style pour nettoyer le HTML renvoyé par le RSS de Reddit */
-        .rss-content img { max-width: 100%; border-radius: 4px; margin-top: 10px; border: 1px solid #edebe9; }
-        .rss-content a { color: #0078d4; text-decoration: none; }
+        .ms-blue { color: #0f6cbd; }
+        .ms-bg-blue { background-color: #0f6cbd; }
+        .ms-bg-blue-light { background-color: #eaf6ff; }
+        
+        /* Style des contenus RSS */
+        .rss-content img { max-width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #e5e7eb; }
+        .rss-content a { color: #0f6cbd; text-decoration: none; }
         .rss-content a:hover { text-decoration: underline; }
+        .rss-content blockquote { border-left: 3px solid #0f6cbd; padding-left: 10px; color: #4b5563; margin: 10px 0; background: #f9fafb; padding: 10px; border-radius: 4px; }
+        .rss-content p { margin-bottom: 10px; }
+        
+        /* Scrollbars élégantes */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; border: 3px solid white; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
     </style>
 </head>
-<body class="bg-[#f3f2f1] text-[#323130] h-screen flex flex-col overflow-hidden text-xs select-none">
+<body class="bg-white text-gray-800 h-screen flex flex-col overflow-hidden text-[13px] select-none">
 
-    <header class="bg-white h-12 flex items-center px-3 justify-between border-b border-[#edebe9]">
-        <div class="flex items-center space-x-4 h-full pt-2">
-            <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Fichier</span>
-            <span class="text-[#323130] font-semibold border-b-2 border-[#0078d4] px-3 h-full flex items-center">Accueil</span>
-            <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Envoi/réception</span>
-            <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Affichage</span>
-            <span class="text-[#323130] hover:bg-[#f3f2f1] px-3 py-1 cursor-pointer font-normal">Aide</span>
+    <header class="bg-white h-12 flex items-center px-4 justify-between border-b border-gray-200 shrink-0">
+        <div class="flex items-center space-x-3 w-1/4">
+            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">O</div>
+            <span class="font-semibold text-gray-800 text-base">Outlook</span>
         </div>
 
-        <div class="w-1/3 relative">
-            <input type="text" id="post-search" placeholder="🔍 Rechercher dans ce dossier..." 
-                   class="w-full pl-6 pr-4 py-1 bg-[#f3f2f1] placeholder-[#605e5c] border border-transparent rounded focus:outline-none focus:bg-white focus:border-[#a19f9d] text-xs">
+        <div class="w-2/5 max-w-xl relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500 text-sm"></i>
+            <input type="text" id="post-search" placeholder="Rechercher" 
+                   class="w-full pl-9 pr-4 py-1.5 bg-[#f3f2f1] placeholder-gray-500 border border-transparent rounded-full focus:outline-none focus:bg-white focus:border-[#0f6cbd] focus:shadow-sm text-sm transition-all shadow-sm">
         </div>
 
-        <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2 bg-[#f3f2f1] px-2 py-1 rounded border border-[#edebe9]">
-                <span class="text-[11px] text-[#605e5c]">Essayez le nouveau Outlook</span>
-                <div class="w-7 h-4 bg-[#ced4da] rounded-full p-0.5 cursor-pointer flex items-center">
-                    <div class="bg-white w-3 h-3 rounded-full shadow-sm"></div>
+        <div class="flex items-center space-x-5 w-1/4 justify-end">
+            <div class="flex items-center space-x-2">
+                <span class="text-[13px] font-medium text-gray-700">Nouvelle version d'Outlook</span>
+                <div class="w-9 h-5 ms-bg-blue rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+                    <div class="bg-white w-4 h-4 rounded-full shadow-sm"></div>
                 </div>
             </div>
-            <span class="text-[#605e5c] text-sm cursor-pointer hover:text-black">🔔</span>
-            <div class="w-6 h-6 rounded-full bg-[#d83b01] text-white flex items-center justify-center font-semibold text-[10px] cursor-pointer">LC</div>
+            <div class="flex space-x-4 text-gray-500 text-lg">
+                <i class="fa-regular fa-bell hover:text-gray-800 cursor-pointer"></i>
+                <i class="fa-solid fa-gear hover:text-gray-800 cursor-pointer"></i>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-[#d83b01] text-white flex items-center justify-center font-semibold text-xs cursor-pointer">LC</div>
         </div>
     </header>
 
+    <div class="bg-white border-b border-gray-200 flex flex-col shrink-0">
+        <div class="flex items-center space-x-6 px-4 h-8 text-sm text-gray-600">
+            <span class="hover:text-black cursor-pointer">Fichier</span>
+            <span class="font-semibold text-black border-b-[3px] border-[#0f6cbd] h-full flex items-center px-1">Accueil</span>
+            <span class="hover:text-black cursor-pointer">Afficher</span>
+            <span class="hover:text-black cursor-pointer">Aide</span>
+        </div>
+        <div class="flex items-center h-16 px-4 space-x-2">
+            <button onclick="window.openModal()" class="flex items-center space-x-2 bg-white hover:bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg shadow-sm text-sm font-medium">
+                <i class="fa-solid fa-envelope text-[#0f6cbd]"></i>
+                <span class="text-gray-800">Nouveau</span>
+                <i class="fa-solid fa-chevron-down text-xs text-gray-500 ml-1"></i>
+            </button>
+            <div class="h-8 w-px bg-gray-200 mx-1"></div>
+            <div class="flex flex-col text-[11px] text-gray-500 space-y-1 px-2">
+                <span class="hover:text-black cursor-pointer"><i class="fa-solid fa-trash mr-1"></i> Vider</span>
+                <span class="hover:text-black cursor-pointer"><i class="fa-solid fa-box-archive mr-1"></i> Archiver</span>
+            </div>
+            <div class="h-8 w-px bg-gray-200 mx-1"></div>
+            <div class="flex items-center px-2">
+                <button class="flex items-center space-x-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 px-3 py-1.5 rounded-lg text-sm text-gray-700">
+                    <i class="fa-solid fa-bolt text-yellow-500"></i>
+                    <span>Actions rapides</span>
+                </button>
+            </div>
+            <div class="flex-1"></div>
+            <button class="flex flex-col items-center justify-center hover:bg-gray-50 px-3 py-1 rounded-lg border border-transparent hover:border-gray-200">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/2/21/Copilot_Icon.svg" class="w-5 h-5 mb-0.5" alt="Copilot">
+                <span class="text-[11px] font-medium text-gray-700">Copilot</span>
+            </button>
+        </div>
+    </div>
+
     <div class="flex flex-1 overflow-hidden bg-white">
         
-        <div class="w-12 bg-[#f3f2f1] border-r border-[#edebe9] flex flex-col items-center py-4 space-y-6 text-[#605e5c] text-sm">
-            <span class="text-[#0078d4] font-bold cursor-pointer">✉</span>
-            <span class="hover:text-black cursor-pointer">📅</span>
-            <span class="hover:text-black cursor-pointer">👥</span>
-            <span class="hover:text-black cursor-pointer">📁</span>
-            <span class="hover:text-black cursor-pointer">✓</span>
+        <div class="w-12 bg-[#f3f2f1] border-r border-gray-200 flex flex-col items-center py-4 space-y-5 text-gray-500 text-lg shrink-0">
+            <i class="fa-solid fa-envelope text-[#0f6cbd] bg-white p-2 rounded-md shadow-sm"></i>
+            <i class="fa-regular fa-calendar hover:bg-gray-200 p-2 rounded-md cursor-pointer transition"></i>
+            <i class="fa-solid fa-user-group hover:bg-gray-200 p-2 rounded-md cursor-pointer transition"></i>
+            <i class="fa-regular fa-square-check hover:bg-gray-200 p-2 rounded-md cursor-pointer transition"></i>
+            <i class="fa-brands fa-microsoft hover:bg-gray-200 p-2 rounded-md cursor-pointer transition"></i>
         </div>
 
-        <nav class="w-52 bg-white border-r border-[#edebe9] flex flex-col p-2 overflow-y-auto">
-            <button onclick="window.openModal()" class="border border-[#a19f9d] text-[#323130] bg-white rounded px-3 py-1.5 text-left font-normal hover:bg-[#f3f2f1] flex items-center space-x-2 mb-3 w-full transition text-[11px]">
-                <span class="outlook-blue font-bold">+</span>
-                <span>Nouveau courrier</span>
-            </button>
-
-            <div class="space-y-0.5 text-[11px]">
-                <div class="flex items-center space-x-1 text-[#323130] font-semibold px-1 py-1 cursor-pointer">
-                    <span>▼ Favoris</span>
+        <nav class="w-60 bg-white border-r border-gray-200 flex flex-col p-3 overflow-y-auto shrink-0">
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2 text-gray-800 font-semibold px-2 py-1.5 cursor-pointer hover:bg-gray-100 rounded-md">
+                    <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
+                    <span>Favoris</span>
                 </div>
-                <div class="pl-3 space-y-0.5">
-                    <button onclick="window.loadReddit('all')" class="flex items-center justify-between px-2 py-0.5 text-[#323130] bg-[#eff6fc] border-l-2 border-[#0078d4] font-semibold w-full text-left">
-                        <span>Boîte de réception</span>
-                        <span class="text-[#0078d4] text-[10px] font-bold">r/all</span>
+                <div class="pl-4 space-y-1">
+                    <button onclick="window.loadReddit('all')" class="flex items-center justify-between px-3 py-1.5 ms-bg-blue-light text-[#0f6cbd] font-semibold w-full text-left rounded-md relative">
+                        <div class="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-[#0f6cbd] rounded-r-md"></div>
+                        <span class="flex items-center"><i class="fa-solid fa-inbox mr-2"></i> Boîte de réception</span>
+                        <span class="text-xs font-bold">r/all</span>
                     </button>
-                    <div class="px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] cursor-pointer">Éléments envoyés</div>
-                    <div class="px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] cursor-pointer">Éléments supprimés</div>
+                    <button class="flex items-center px-3 py-1.5 text-gray-600 hover:bg-gray-100 w-full text-left rounded-md">
+                        <i class="fa-regular fa-paper-plane mr-2 text-gray-400"></i> Éléments envoyés
+                    </button>
+                    <button class="flex items-center px-3 py-1.5 text-gray-600 hover:bg-gray-100 w-full text-left rounded-md">
+                        <i class="fa-regular fa-trash-can mr-2 text-gray-400"></i> Éléments supprimés
+                    </button>
                 </div>
 
-                <div class="flex items-center space-x-1 text-[#323130] font-semibold px-1 py-1 pt-3 cursor-pointer">
-                    <span>▼ lucas.cussac@reddit.fr</span>
+                <div class="flex items-center space-x-2 text-gray-800 font-semibold px-2 py-1.5 mt-4 cursor-pointer hover:bg-gray-100 rounded-md">
+                    <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
+                    <span>lucas.cussac@reddit.fr</span>
                 </div>
-                <div class="pl-3 space-y-0.5" id="subreddits-list">
-                    <button onclick="window.loadReddit('france')" class="flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left">
-                        <span>r/france</span>
-                    </button>
-                    <button onclick="window.loadReddit('gaming')" class="flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left">
-                        <span>r/gaming</span>
+                <div class="pl-4 space-y-1" id="subreddits-list">
+                    </div>
+                
+                <div class="pl-4 mt-2">
+                    <button onclick="window.openModal()" class="text-[#0f6cbd] hover:underline text-xs font-medium flex items-center px-3 py-1">
+                        <i class="fa-solid fa-plus mr-1"></i> Ajouter un dossier (Subreddit)
                     </button>
                 </div>
             </div>
         </nav>
 
-        <section class="w-80 bg-white border-r border-[#edebe9] flex flex-col overflow-y-auto">
-            <div class="flex items-center px-3 py-2 border-b border-[#f3f2f1] text-[11px] text-[#605e5c] font-medium space-x-4">
-                <span class="text-[#0078d4] font-semibold border-b-2 border-[#0078d4] pb-1 cursor-pointer">Prioritaire</span>
-                <span class="hover:text-black cursor-pointer pb-1">Autres</span>
-                <div class="flex-1 text-right text-[10px] text-[#605e5c] font-bold" id="current-folder-label">r/all</div>
+        <section class="w-80 bg-white border-r border-gray-200 flex flex-col overflow-y-auto relative shrink-0">
+            <div class="sticky top-0 z-10 bg-white flex items-center justify-between px-4 pt-2 border-b border-gray-200 text-sm font-medium">
+                <div class="flex space-x-4">
+                    <span class="text-gray-500 cursor-pointer hover:text-gray-800 pb-2">Prioritaire</span>
+                    <span class="text-black font-semibold border-b-[3px] border-[#0f6cbd] pb-2 cursor-pointer">Autres</span>
+                </div>
+                <div class="flex space-x-2 text-gray-500 pb-2">
+                    <i class="fa-solid fa-filter hover:text-black cursor-pointer"></i>
+                    <i class="fa-solid fa-arrow-down-up-active hover:text-black cursor-pointer"></i>
+                </div>
             </div>
 
-            <div id="posts-list" class="flex flex-col">
-                <div class="p-3 text-[#a19f9d] italic">Mise à jour du dossier...</div>
+            <div id="posts-list" class="flex flex-col p-2 space-y-1">
+                <div class="p-3 text-gray-500 italic text-center">Synchronisation en cours...</div>
             </div>
         </section>
 
-        <main class="flex-1 bg-white flex flex-col overflow-y-auto" id="post-view">
-            <div class="text-[#a19f9d] flex flex-col items-center justify-center h-full">
-                <p class="text-xs">Sélectionnez un élément pour le lire.</p>
+        <main class="flex-1 bg-[#f3f2f1] flex flex-col overflow-hidden" id="post-view">
+            <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                <div class="relative w-40 h-40 flex items-center justify-center mb-4">
+                    <div class="absolute bottom-4 w-32 h-20 bg-white rounded-md shadow-md border border-gray-200 z-20"></div>
+                    <div class="absolute bottom-4 w-32 h-20 bg-gray-50 rounded-md z-30" style="clip-path: polygon(0 0, 50% 50%, 100% 0, 100% 100%, 0 100%);"></div>
+                    <div class="absolute top-6 w-24 h-28 bg-gradient-to-b from-blue-100 to-white rounded-md shadow-sm border border-blue-50 z-10"></div>
+                </div>
+                <p class="text-lg font-medium text-gray-700">Sélectionner un élément pour le lire</p>
+                <p class="text-sm">Aucun élément sélectionné</p>
             </div>
         </main>
     </div>
 
-    <div id="outlook-modal" class="hidden fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-        <div class="bg-white w-[460px] rounded shadow-lg border border-[#a19f9d] flex flex-col overflow-hidden">
-            <div class="bg-[#f3f2f1] px-3 py-1.5 flex justify-between items-center border-b border-[#edebe9]">
-                <span class="font-semibold text-[11px] text-[#323130]">Nouveau message</span>
-                <button onclick="window.closeModal()" class="text-[#605e5c] font-bold">✕</button>
+    <div id="outlook-modal" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-white w-[500px] rounded-xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
+            <div class="px-4 py-3 flex justify-between items-center border-b border-gray-100">
+                <span class="font-semibold text-sm text-gray-800">Ajouter un dossier de flux Reddit</span>
+                <button onclick="window.closeModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div class="p-3 flex flex-col space-y-2 text-[11px]">
-                <div class="flex items-center border-b border-[#edebe9] pb-1">
-                    <span class="w-12 text-[#605e5c]">À :</span>
-                    <div class="bg-[#eff6fc] text-[#0078d4] px-1.5 py-0.5 rounded border border-[#c7e0f4] font-medium">Serveur Reddit (RSS)</div>
+            <div class="p-5 flex flex-col space-y-4">
+                <div class="flex items-center border-b border-gray-200 pb-2">
+                    <span class="w-16 text-sm text-gray-500 font-medium">Serveur :</span>
+                    <div class="bg-blue-50 text-[#0f6cbd] px-2 py-1 rounded border border-blue-100 font-semibold text-xs">RSS Exchange</div>
                 </div>
-                <div class="flex items-center border-b border-[#edebe9] pb-1">
-                    <span class="w-12 text-[#605e5c]">Objet :</span>
-                    <input type="text" id="modal-sub-input" placeholder="Nom du subreddit à ajouter (ex: pics, askreddit)" class="flex-1 outline-none font-semibold text-[#323130]">
+                <div class="flex items-center border-b border-gray-200 pb-2">
+                    <span class="w-16 text-sm text-gray-500 font-medium">Subreddit :</span>
+                    <input type="text" id="modal-sub-input" placeholder="Ex: france, askreddit, pics..." class="flex-1 outline-none font-semibold text-gray-800 placeholder-gray-300">
                 </div>
             </div>
-            <div class="bg-[#f3f2f1] px-3 py-2 flex justify-end space-x-2 border-t border-[#edebe9]">
-                <button onclick="window.closeModal()" class="px-3 py-1 border border-[#a19f9d] bg-white text-[#323130]">Abandonner</button>
-                <button onclick="window.submitModal()" class="px-4 py-1 outlook-bg-blue text-white font-semibold">Envoyer</button>
+            <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-3 border-t border-gray-100">
+                <button onclick="window.closeModal()" class="px-4 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-200 transition">Annuler</button>
+                <button onclick="window.submitModal()" class="px-5 py-1.5 ms-bg-blue text-white rounded-lg font-medium hover:bg-blue-700 shadow-md transition">Connecter</button>
             </div>
         </div>
     </div>
 
     <script>
+        // 1. INITIALISATION DES DONNÉES AVEC LE LOCALSTORAGE
         window.currentPosts = [];
-        window.readPosts = new Set();
         window.activeSubreddit = 'all';
 
-        // Modale d'ajout
+        // Charger les posts lus depuis la mémoire
+        const savedReadPosts = JSON.parse(localStorage.getItem('outlookReadPosts') || '[]');
+        window.readPosts = new Set(savedReadPosts);
+
+        // Charger les subreddits ajoutés depuis la mémoire (avec des valeurs par défaut)
+        let savedSubs = JSON.parse(localStorage.getItem('outlookCustomSubs') || '[]');
+        if (savedSubs.length === 0) {
+            savedSubs = ['france', 'gaming']; // Dossiers par défaut
+        }
+        window.customSubs = savedSubs;
+
+        // Fonction pour sauvegarder les posts lus
+        window.saveReadState = function() {
+            localStorage.setItem('outlookReadPosts', JSON.stringify([...window.readPosts]));
+        };
+
+        // Fonction pour sauvegarder la liste des sous-dossiers
+        window.saveSubsState = function() {
+            localStorage.setItem('outlookCustomSubs', JSON.stringify(window.customSubs));
+        };
+
+        // GESTION DE LA MODALE
         window.openModal = function() { document.getElementById('outlook-modal').classList.remove('hidden'); document.getElementById('modal-sub-input').focus(); };
         window.closeModal = function() { document.getElementById('outlook-modal').classList.add('hidden'); document.getElementById('modal-sub-input').value = ''; };
         
@@ -141,7 +220,11 @@
             const input = document.getElementById('modal-sub-input');
             const sub = input.value.trim().toLowerCase().replace('r/', '');
             if (sub !== '') { 
-                window.addNewSubredditMenu(sub); 
+                if (!window.customSubs.includes(sub)) {
+                    window.customSubs.push(sub);
+                    window.saveSubsState();
+                    window.renderSubredditsList(); // Met à jour le menu à gauche
+                }
                 window.loadReddit(sub); 
                 window.closeModal(); 
             }
@@ -150,25 +233,48 @@
         document.getElementById('modal-sub-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') window.submitModal(); });
         document.getElementById('post-search').addEventListener('input', function(e) { window.renderPostsList(e.target.value.toLowerCase().trim()); });
 
-        window.addNewSubredditMenu = function(sub) {
+        // AFFICHER LES DOSSIERS (SUBREDDITS) DANS LE MENU GAUCHE
+        window.renderSubredditsList = function() {
             const list = document.getElementById('subreddits-list');
-            if ([...list.querySelectorAll('span')].some(el => el.innerText === `r/${sub}`)) return;
-            const button = document.createElement('button');
-            button.onclick = () => window.loadReddit(sub);
-            button.className = "flex items-center justify-between px-2 py-0.5 text-[#605e5c] hover:bg-[#f3f2f1] w-full text-left";
-            button.innerHTML = `<span>r/${sub}</span>`;
-            list.appendChild(button);
+            list.innerHTML = ''; // On vide
+            
+            window.customSubs.forEach(sub => {
+                const button = document.createElement('button');
+                button.onclick = () => window.loadReddit(sub);
+                button.className = "flex items-center px-3 py-1.5 text-gray-600 hover:bg-gray-100 w-full text-left rounded-md transition group";
+                
+                // Style spécifique si c'est le dossier actif
+                if (sub === window.activeSubreddit && window.activeSubreddit !== 'all') {
+                    button.className = "flex items-center px-3 py-1.5 ms-bg-blue-light text-[#0f6cbd] font-semibold w-full text-left rounded-md transition group";
+                }
+
+                button.innerHTML = `
+                    <i class="fa-regular fa-folder mr-2 ${sub === window.activeSubreddit && sub !== 'all' ? 'text-[#0f6cbd]' : 'text-gray-400'}"></i>
+                    <span class="flex-1 truncate">r/${sub}</span>
+                    <i class="fa-solid fa-xmark text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 ml-2" onclick="event.stopPropagation(); window.removeSubreddit('${sub}')"></i>
+                `;
+                list.appendChild(button);
+            });
         };
 
-        // --- NOUVELLE MÉTHODE : FETCH VIA FLUX RSS (La seule méthode survivante en 2026 sans API Key) ---
+        // SUPPRIMER UN DOSSIER
+        window.removeSubreddit = function(sub) {
+            window.customSubs = window.customSubs.filter(s => s !== sub);
+            window.saveSubsState();
+            window.renderSubredditsList();
+            if (window.activeSubreddit === sub) window.loadReddit('all'); // Retour à l'accueil si on supprime le dossier actif
+        };
+
+        // CHARGEMENT DES POSTS VIA RSS
         window.loadReddit = async function(subreddit) {
             window.activeSubreddit = subreddit;
+            window.renderSubredditsList(); // Mettre à jour la surbrillance bleue du dossier actif
+            
             document.getElementById('current-folder-label').innerText = `r/${subreddit}`;
             const listContainer = document.getElementById('posts-list');
-            listContainer.innerHTML = '<div class="p-3 text-[#a19f9d] italic">Synchronisation Exchange (RSS)...</div>';
+            listContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-[#0f6cbd] mr-2"></i>Chargement...</div>';
             
             try {
-                // On passe le flux RSS officiel de Reddit à travers le convertisseur gratuit rss2json
                 const rssFeed = `https://www.reddit.com/r/${subreddit}.rss`;
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssFeed)}`;
                 
@@ -179,96 +285,185 @@
                     window.currentPosts = data.items;
                     window.renderPostsList();
                 } else {
-                    listContainer.innerHTML = '<div class="p-3 text-[#d83b01]">Subreddit privé ou introuvable.</div>';
+                    listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Dossier introuvable ou privé.</div>';
                 }
             } catch (error) {
-                listContainer.innerHTML = '<div class="p-3 text-[#d83b01]">Serveur de synchronisation injoignable.</div>';
+                listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Erreur de synchronisation serveur.</div>';
             }
         };
 
+        // AFFICHAGE DE LA LISTE DES MAILS (Style Nouveau Outlook)
         window.renderPostsList = function(filterQuery = '') {
             const listContainer = document.getElementById('posts-list');
             listContainer.innerHTML = ''; 
 
             const timeHeader = document.createElement('div');
-            timeHeader.className = "bg-[#f3f2f1] px-3 py-0.5 text-[10px] font-semibold text-[#605e5c] border-b border-[#edebe9] flex items-center space-x-1";
-            timeHeader.innerHTML = `<span>▼ Aujourd'hui</span>`;
+            timeHeader.className = "px-3 py-1.5 text-xs font-semibold text-gray-500 flex items-center space-x-1 mt-1";
+            timeHeader.innerHTML = `<i class="fa-solid fa-angle-down text-[10px]"></i> <span>Aujourd'hui</span>`;
             listContainer.appendChild(timeHeader);
 
             const filtered = window.currentPosts.filter(post => post.title.toLowerCase().includes(filterQuery));
 
             if (filtered.length === 0) {
-                listContainer.innerHTML += '<div class="p-3 text-[#a19f9d] italic">Aucun courrier trouvé.</div>';
+                listContainer.innerHTML += '<div class="p-4 text-center text-gray-400 text-sm">Votre dossier est vide.</div>';
                 return;
             }
 
             filtered.forEach((post, index) => {
                 const isRead = window.readPosts.has(post.link);
                 const item = document.createElement('div');
-                item.className = `p-2 px-3 border-b border-[#f3f2f1] hover:bg-[#f3f2f1] cursor-pointer flex flex-col relative transition ${isRead ? 'border-l-2 border-transparent' : 'border-l-2 border-[#0078d4] bg-[#eff6fc]/30'}`;
-                if(!isRead) item.style.borderLeft = "3px solid #0078d4";
+                
+                // Style d'une cellule de mail
+                item.className = `p-3 rounded-lg cursor-pointer transition flex items-start space-x-3 border border-transparent ${isRead ? 'hover:bg-gray-100' : 'bg-white hover:shadow-sm hover:border-gray-200'}`;
                 item.onclick = () => window.viewPost(post.link, index);
                 
-                // Nettoyage de l'auteur (RSS renvoie un lien HTML pour l'auteur)
                 let authorName = post.author || "Anonyme";
+                // Créer le badge coloré (les initiales)
+                const colors = ['bg-[#6264A7]', 'bg-[#D13438]', 'bg-[#038387]', 'bg-[#498205]', 'bg-[#8764B8]'];
+                const randomColor = colors[index % colors.length];
+                let initiales = authorName.length > 2 ? authorName.replace('/u/', '').substring(0, 2).toUpperCase() : "RE";
+
                 let pubTime = new Date(post.pubDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
                 item.innerHTML = `
-                    <div class="flex justify-between items-baseline">
-                        <span class="${isRead ? 'text-[#323130]' : 'text-black font-bold'} text-[11px] truncate max-w-[140px]">${authorName}</span>
-                        <span class="text-[10px] ${isRead ? 'text-[#a19f9d]' : 'text-[#0078d4] font-semibold'}">${pubTime}</span>
+                    <div class="w-8 h-8 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-[11px] shrink-0 mt-0.5">
+                        ${initiales}
                     </div>
-                    <h4 class="${isRead ? 'text-[#605e5c]' : 'text-[#0078d4] font-semibold'} text-[11px] truncate">${post.title}</h4>
-                    <p class="text-[10px] text-[#a19f9d] truncate">🔗 Lien direct Outlook Web</p>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center mb-0.5">
+                            <span class="${isRead ? 'text-gray-600 font-normal' : 'text-gray-900 font-semibold'} text-[13px] truncate">${authorName}</span>
+                            <span class="text-xs ${isRead ? 'text-gray-500' : 'text-[#0f6cbd] font-semibold'}">${pubTime}</span>
+                        </div>
+                        <h4 class="${isRead ? 'text-gray-600 font-normal' : 'text-[#0f6cbd] font-semibold'} text-[12px] truncate leading-tight">${post.title}</h4>
+                        <p class="text-[11px] text-gray-500 truncate mt-0.5">Cliquez pour afficher le contenu et les réponses du fil.</p>
+                    </div>
                 `;
                 listContainer.appendChild(item);
             });
         };
 
+        // AFFICHAGE DU POST ET DE SES COMMENTAIRES
         window.viewPost = function(postLink, index) {
             const post = window.currentPosts.find(p => p.link === postLink);
             const viewContainer = document.getElementById('post-view');
             
+            // Marquer lu et sauvegarder en mémoire !
             window.readPosts.add(postLink);
+            window.saveReadState(); 
             window.renderPostsList(document.getElementById('post-search').value.toLowerCase());
 
-            const colors = ['bg-[#8764b8]', 'bg-[#0078d4]', 'bg-[#107c41]', 'bg-[#b13c2e]'];
+            const colors = ['bg-[#6264A7]', 'bg-[#D13438]', 'bg-[#038387]', 'bg-[#498205]', 'bg-[#8764B8]'];
             const randomColor = colors[index % colors.length];
-            
             let authorName = post.author || "Anonyme";
-            let initiales = "RE"; // Par défaut
-            if (authorName.length > 2) {
-                initiales = authorName.replace('/u/', '').substring(0, 2).toUpperCase();
-            }
+            let initiales = authorName.length > 2 ? authorName.replace('/u/', '').substring(0, 2).toUpperCase() : "RE";
+            let pubDate = new Date(post.pubDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
             viewContainer.innerHTML = `
-                <div class="p-4 border-b border-[#edebe9]">
-                    <h1 class="text-lg font-light text-[#323130] mb-3">${post.title}</h1>
-                    <div class="flex items-start justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-xs flex-shrink-0">${initiales}</div>
-                            <div>
-                                <div class="text-[11px] font-bold text-[#323130]">${authorName} <span class="text-[#a19f9d] font-normal">&lt;noreply@reddit.com&gt;</span></div>
-                                <div class="text-[10px] text-[#605e5c] mt-0.5">À : <span class="text-[#323130]">r/${window.activeSubreddit}</span></div>
+                <div class="bg-white flex flex-col h-full shadow-sm rounded-tl-lg overflow-hidden border-l border-t border-gray-200 m-2 mt-0">
+                    
+                    <div class="px-6 py-5 border-b border-gray-100 shrink-0">
+                        <h1 class="text-xl font-semibold text-gray-900 mb-4">${post.title}</h1>
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full ${randomColor} text-white flex items-center justify-center font-semibold text-sm shrink-0">${initiales}</div>
+                                <div>
+                                    <div class="text-[13px] font-semibold text-gray-900">${authorName} <span class="text-gray-500 font-normal ml-1">&lt;noreply@reddit.com&gt;</span></div>
+                                    <div class="text-xs text-gray-500 mt-0.5">À : r/${window.activeSubreddit}</div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-xs text-gray-500 mb-2">${pubDate}</span>
+                                <div class="flex space-x-1">
+                                    <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition"><i class="fa-solid fa-reply"></i></button>
+                                    <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition"><i class="fa-solid fa-reply-all"></i></button>
+                                    <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition"><i class="fa-solid fa-share"></i></button>
+                                    <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition ml-2"><i class="fa-solid fa-ellipsis"></i></button>
+                                </div>
                             </div>
                         </div>
-                        <div class="text-[11px] text-[#605e5c] flex items-center space-x-3 border border-[#edebe9] px-2 py-1 rounded bg-[#faf9f8]">
-                            <a href="${post.link}" target="_blank" class="hover:text-[#0078d4] font-semibold">🔗 Lire le fil d'origine sur Reddit</a>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="px-8 py-6 text-[14px] text-gray-800 leading-relaxed rss-content max-w-4xl">
+                            ${post.content || post.description}
+                        </div>
+
+                        <div class="border-t border-gray-200 mx-8 my-4"></div>
+
+                        <div class="px-8 pb-8">
+                            <div class="flex items-center justify-between mb-4 mt-2">
+                                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-regular fa-comments mr-2"></i> Historique de la conversation</h3>
+                                <a href="${post.link}" target="_blank" class="text-xs text-[#0f6cbd] hover:underline font-medium"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Ouvrir dans le navigateur</a>
+                            </div>
+                            
+                            <div id="comments-container" class="space-y-4">
+                                <div class="text-xs italic text-gray-400 flex items-center"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Connexion au serveur de discussion...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="p-4 text-[12px] text-[#323130] bg-white leading-relaxed border-b border-[#f3f2f1] rss-content overflow-y-auto">
-                    ${post.content || post.description}
-                </div>
-                <div class="bg-[#faf9f8] p-4 flex-1">
-                    <h3 class="text-[10px] font-bold text-[#605e5c] uppercase tracking-wider mb-2">🔒 Accès restreint</h3>
-                    <p class="text-[11px] text-[#a19f9d]">Suite à la mise à jour de sécurité de mai 2026, l'accès public aux commentaires internes est désactivé. Veuillez cliquer sur "Lire le fil d'origine" pour voir les réponses.</p>
-                </div>
             `;
+
+            window.loadComments(postLink);
         };
 
-        // Démarrage
+        // CHARGEMENT DES COMMENTAIRES
+        window.loadComments = async function(postLink) {
+            const container = document.getElementById('comments-container');
+            
+            try {
+                let rssLink = postLink;
+                if (!rssLink.endsWith('/')) rssLink += '/';
+                rssLink += '.rss';
+
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssLink)}`;
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.status === 'ok' && data.items.length > 0) {
+                    container.innerHTML = '';
+                    
+                    const comments = data.items.filter(item => item.title.includes('Comment') || item.title.includes('by'));
+                    const actualComments = comments.length > 0 ? comments : data.items.slice(1);
+
+                    if (actualComments.length === 0) {
+                        container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
+                        return;
+                    }
+
+                    actualComments.slice(0, 15).forEach(c => {
+                        const commentBox = document.createElement('div');
+                        commentBox.className = "bg-white p-4 border border-gray-200 rounded-lg shadow-sm flex flex-col space-y-2";
+                        
+                        let author = c.author || "Anonyme";
+                        if (author === "Anonyme" && c.title.includes(' by ')) { author = c.title.split(' by ')[1] || "Anonyme"; }
+                        let pubTime = new Date(c.pubDate).toLocaleString('fr-FR', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'});
+
+                        commentBox.innerHTML = `
+                            <div class="flex justify-between items-center text-xs border-b border-gray-100 pb-2">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-6 h-6 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center font-bold text-[9px]">${author.substring(0,2).toUpperCase()}</div>
+                                    <span class="font-semibold text-gray-800">${author}</span>
+                                </div>
+                                <span class="text-gray-500">${pubTime}</span>
+                            </div>
+                            <div class="text-[13px] text-gray-700 rss-content leading-relaxed">
+                                ${c.content}
+                            </div>
+                        `;
+                        container.appendChild(commentBox);
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-xs text-red-500 italic">Erreur de lecture des réponses.</p>';
+                }
+            } catch (error) {
+                container.innerHTML = '<p class="text-xs text-red-500 italic">Serveur indisponible.</p>';
+            }
+        };
+
+        // Démarrage initial
         window.onload = function() {
+            window.renderSubredditsList();
             window.loadReddit('all');
         };
     </script>
