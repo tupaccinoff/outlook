@@ -179,6 +179,10 @@
     </div>
 
     <script>
+        // À REMPLACER par l'URL de ton Cloudflare Worker, ex :
+        // https://reddit-outlook-proxy.ton-pseudo.workers.dev
+        window.REDDIT_PROXY_BASE = 'reddit.tupaccino.workers.dev';
+
         window.currentPosts = [];
         window.readPosts = new Set(JSON.parse(localStorage.getItem('outlookReadPosts') || '[]'));
         window.activeSubreddit = 'all';
@@ -246,25 +250,50 @@
             window.renderSubredditsList();
             if (window.activeSubreddit === sub) window.loadReddit('all');
         };
+        // --- MOTEUR PROPRE : APPELLE TON WORKER CLOUDFLARE ---
+        window.fetchReddit = async function(path, onSuccess, onError) {
+            const listContainer = document.getElementById('posts-list');
 
-        // --- MOTEUR MAGIQUE ANTI-CORS ---
-        // Exécute la requête de façon dynamique pour forcer la sécurité du navigateur
-        window.fetchViaAllOriginsJSONP = function(targetUrl, callbackName) {
-            const scriptId = 'jsonp-' + callbackName;
-            const oldScript = document.getElementById(scriptId);
-            if (oldScript) oldScript.remove();
+            if (!window.REDDIT_PROXY_BASE || window.REDDIT_PROXY_BASE.includes('TON-WORKER')) {
+                const msg = 'Configure REDDIT_PROXY_BASE avec l\'URL de ton Worker Cloudflare.';
+                if (onError) onError(new Error(msg));
+                else listContainer.innerHTML = `<div class="p-4 text-center text-red-500 text-sm">${msg}</div>`;
+                return;
+            }
 
-            const script = document.createElement('script');
-            script.id = scriptId;
-            script.src = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&callback=${callbackName}`;
-            document.body.appendChild(script);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+
+            try {
+                const url = `${window.REDDIT_PROXY_BASE}${path}`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal,
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => '');
+                    throw new Error(`HTTP ${response.status} ${errorText.slice(0, 120)}`);
+                }
+
+                const data = await response.json();
+                onSuccess(data);
+            } catch (error) {
+                console.error('Erreur Reddit proxy:', error);
+                if (onError) onError(error);
+                else listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Impossible de joindre Reddit via le proxy.</div>';
+            } finally {
+                clearTimeout(timeout);
+                window.isLoadMoreActive = false;
+            }
         };
 
-        // CALLBACK GESTION DES POSTS (Reçoit la donnée de AllOrigins)
-        window.onRedditPostsLoaded = function(response) {
+        // CALLBACK GESTION DES POSTS
+        window.onRedditPostsLoaded = function(data) {
             const listContainer = document.getElementById('posts-list');
             try {
-                const data = JSON.parse(response.contents);
                 if (data && data.data && data.data.children) {
                     const postsData = data.data.children.map(child => child.data);
                     
@@ -277,25 +306,26 @@
                     window.lastPostId = data.data.after; 
                     window.renderPostsList();
                 } else {
-                    if (!window.isLoadMoreActive) listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Dossier introuvable ou privé.</div>';
+                    if (!window.isLoadMoreActive) listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Dossier introuvable, privé, ou réponse Reddit invalide.</div>';
                 }
             } catch(e) {
+                console.error(e);
                 if (!window.isLoadMoreActive) listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Erreur de lecture serveur.</div>';
             }
         };
 
         // CALLBACK GESTION DES COMMENTAIRES (Avec arborescence !)
-        window.onRedditCommentsLoaded = function(response) {
+        window.onRedditCommentsLoaded = function(data) {
             const container = document.getElementById('comments-container');
             try {
-                const data = JSON.parse(response.contents);
                 if (data && data[1] && data[1].data && data[1].data.children.length > 0) {
                     const comments = data[1].data.children;
-                    container.innerHTML = window.buildCommentsTree(comments, 0);
+                    container.innerHTML = window.buildCommentsTree(comments, 0) || '<p class="text-xs text-gray-400 italic">Aucune réponse lisible dans ce fil.</p>';
                 } else {
                     container.innerHTML = '<p class="text-xs text-gray-400 italic">Aucune réponse dans ce fil.</p>';
                 }
             } catch (error) {
+                console.error(error);
                 container.innerHTML = '<p class="text-xs text-red-500 italic">Le serveur de commentaires est injoignable.</p>';
             }
         };
@@ -306,8 +336,10 @@
             const listContainer = document.getElementById('posts-list');
             listContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-[#0f6cbd] mr-2"></i>Recherche sur le serveur...</div>';
             
-            const targetUrl = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&restrict_sr=on&sort=relevance&t=all&limit=25&cb=${Date.now()}`;
-            window.fetchViaAllOriginsJSONP(targetUrl, 'onRedditPostsLoaded');
+            const path = `/r/${encodeURIComponent(subreddit)}/search.json?q=${encodeURIComponent(query)}&restrict_sr=on&sort=relevance&t=all&limit=25&cb=${Date.now()}`;
+            window.fetchReddit(path, window.onRedditPostsLoaded, () => {
+                listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Recherche impossible : proxy Reddit injoignable.</div>';
+            });
         };
 
         window.loadReddit = function(subreddit, isLoadMore = false) {
@@ -327,10 +359,16 @@
                 if (btn) btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Récupération...';
             }
             
-            let targetUrl = `https://www.reddit.com/r/${subreddit}.json?limit=25&cb=${Date.now()}`;
-            if (isLoadMore && window.lastPostId) targetUrl += `&after=${window.lastPostId}`;
+            let path = `/r/${encodeURIComponent(subreddit)}.json?limit=25&cb=${Date.now()}`;
+            if (isLoadMore && window.lastPostId) path += `&after=${encodeURIComponent(window.lastPostId)}`;
             
-            window.fetchViaAllOriginsJSONP(targetUrl, 'onRedditPostsLoaded');
+            window.fetchReddit(path, window.onRedditPostsLoaded, () => {
+                if (!isLoadMore) {
+                    listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Synchronisation impossible : proxy Reddit injoignable.</div>';
+                } else {
+                    window.renderPostsList();
+                }
+            });
         };
 
         window.renderPostsList = function() {
@@ -442,8 +480,11 @@
             `;
             
             // Appel pour les commentaires !
-            const targetUrl = `https://www.reddit.com${post.permalink}.json?cb=${Date.now()}`;
-            window.fetchViaAllOriginsJSONP(targetUrl, 'onRedditCommentsLoaded');
+            const path = `${post.permalink}.json?cb=${Date.now()}`;
+            window.fetchReddit(path, window.onRedditCommentsLoaded, () => {
+                const container = document.getElementById('comments-container');
+                if (container) container.innerHTML = '<p class="text-xs text-red-500 italic">Commentaires impossibles à charger.</p>';
+            });
         };
 
         // FONCTION DE CRÉATION DE L'ARBORESCENCE (Les réponses aux réponses)
