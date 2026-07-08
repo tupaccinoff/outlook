@@ -4,10 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nouveau Outlook - Reddit Edition</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
         .ms-blue { color: #0f6cbd; }
         .ms-bg-blue { background-color: #0f6cbd; }
         .ms-bg-blue-light { background-color: #eaf6ff; }
@@ -24,7 +29,9 @@
             text-decoration: none;
         }
 
-        .rss-content a:hover { text-decoration: underline; }
+        .rss-content a:hover {
+            text-decoration: underline;
+        }
 
         ::-webkit-scrollbar { width: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -132,7 +139,7 @@
             </div>
 
             <div class="pl-4 space-y-1">
-                <button onclick="window.loadReddit('all')" id="btn-all" class="flex items-center justify-between px-3 py-1.5 ms-bg-blue-light text-[#0f6cbd] font-semibold w-full text-left rounded-md relative">
+                <button onclick="window.loadReddit('all')" class="flex items-center justify-between px-3 py-1.5 ms-bg-blue-light text-[#0f6cbd] font-semibold w-full text-left rounded-md relative">
                     <div class="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-[#0f6cbd] rounded-r-md"></div>
                     <span class="flex items-center"><i class="fa-solid fa-inbox mr-2"></i> Boîte de réception</span>
                     <span class="text-xs font-bold">r/all</span>
@@ -232,15 +239,20 @@
     window.isLoadMoreActive = false;
 
     let savedSubs = JSON.parse(localStorage.getItem('outlookCustomSubs') || '[]');
-    if (savedSubs.length === 0) savedSubs = ['france', 'gaming', 'antitaff'];
+
+    if (savedSubs.length === 0) {
+        savedSubs = ['france', 'gaming', 'antitaff'];
+    }
+
     window.customSubs = savedSubs;
 
-    window.saveReadState = () => localStorage.setItem('outlookReadPosts', JSON.stringify([...window.readPosts]));
-    window.saveSubsState = () => localStorage.setItem('outlookCustomSubs', JSON.stringify(window.customSubs));
+    window.saveReadState = () => {
+        localStorage.setItem('outlookReadPosts', JSON.stringify([...window.readPosts]));
+    };
 
-    function getRedditBase() {
-        return 'https://pay.reddit.com';
-    }
+    window.saveSubsState = () => {
+        localStorage.setItem('outlookCustomSubs', JSON.stringify(window.customSubs));
+    };
 
     function cleanSubredditName(subreddit) {
         return String(subreddit || '')
@@ -266,58 +278,133 @@
 
     function showListError(message) {
         const listContainer = document.getElementById('posts-list');
+
         listContainer.innerHTML = `
-            <div class="p-4 text-center text-red-500 text-sm">
+            <div class="p-4 text-center text-red-500 text-sm leading-relaxed">
                 <i class="fa-solid fa-triangle-exclamation mr-2"></i>${escapeHTML(message)}
             </div>
         `;
     }
 
-    window.fetchRedditJSONP = function(targetUrl, successCallback, errorMessage) {
-        const callbackName = 'reddit_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
-        const script = document.createElement('script');
+    function buildListingUrls(subreddit, isLoadMore) {
+        const cleanSub = cleanSubredditName(subreddit || 'all');
+        const encodedSub = encodeURIComponent(cleanSub);
+        const now = Date.now();
 
-        const separator = targetUrl.includes('?') ? '&' : '?';
-        const finalUrl = `${targetUrl}${separator}jsonp=${callbackName}&raw_json=1`;
+        let query = `limit=25&cb=${now}`;
 
-        console.log('Reddit URL appelée :', finalUrl);
+        if (isLoadMore && window.lastPostId) {
+            query += `&after=${encodeURIComponent(window.lastPostId)}`;
+        }
 
-        let finished = false;
+        return [
+            `https://pay.reddit.com/r/${encodedSub}/.json?${query}`,
+            `https://www.reddit.com/r/${encodedSub}/.json?${query}`,
+            `https://old.reddit.com/r/${encodedSub}/.json?${query}`,
+            `https://api.reddit.com/r/${encodedSub}?${query}`,
+            `https://api.reddit.com/r/${encodedSub}/hot?${query}`
+        ];
+    }
 
-        const timeout = setTimeout(() => {
-            if (finished) return;
-            finished = true;
+    function buildSearchUrls(subreddit, queryText) {
+        const cleanSub = cleanSubredditName(subreddit || 'all');
+        const encodedSub = encodeURIComponent(cleanSub);
+        const encodedQuery = encodeURIComponent(queryText);
+        const now = Date.now();
 
-            delete window[callbackName];
-            script.remove();
+        const query = `q=${encodedQuery}&restrict_sr=on&sort=relevance&t=all&limit=25&cb=${now}`;
 
-            showListError(errorMessage || "Reddit ne répond pas.");
-        }, 12000);
+        return [
+            `https://pay.reddit.com/r/${encodedSub}/search/.json?${query}`,
+            `https://www.reddit.com/r/${encodedSub}/search/.json?${query}`,
+            `https://old.reddit.com/r/${encodedSub}/search/.json?${query}`,
+            `https://pay.reddit.com/r/${encodedSub}/search.json?${query}`,
+            `https://www.reddit.com/r/${encodedSub}/search.json?${query}`,
+            `https://api.reddit.com/r/${encodedSub}/search?${query}`
+        ];
+    }
 
-        window[callbackName] = function(data) {
-            if (finished) return;
-            finished = true;
+    function buildCommentsUrls(permalink) {
+        const cleanPermalink = String(permalink || '').replace(/\/$/, '');
+        const now = Date.now();
 
-            clearTimeout(timeout);
-            delete window[callbackName];
-            script.remove();
+        return [
+            `https://pay.reddit.com${cleanPermalink}.json?cb=${now}`,
+            `https://www.reddit.com${cleanPermalink}.json?cb=${now}`,
+            `https://old.reddit.com${cleanPermalink}.json?cb=${now}`,
+            `https://api.reddit.com${cleanPermalink}?cb=${now}`
+        ];
+    }
 
-            successCallback(data);
-        };
+    function addJsonpParam(url, callbackName) {
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}jsonp=${callbackName}&raw_json=1`;
+    }
 
-        script.onerror = function() {
-            if (finished) return;
-            finished = true;
+    window.fetchRedditJSONPFallback = function(urls, successCallback, errorMessage) {
+        let attemptIndex = 0;
+        let finishedGlobally = false;
 
-            clearTimeout(timeout);
-            delete window[callbackName];
-            script.remove();
+        function tryNext() {
+            if (finishedGlobally) return;
 
-            showListError(errorMessage || "Erreur réseau Reddit.");
-        };
+            if (attemptIndex >= urls.length) {
+                finishedGlobally = true;
+                showListError(errorMessage || "Reddit ne répond pas. Toutes les routes ont échoué.");
+                return;
+            }
 
-        script.src = finalUrl;
-        document.body.appendChild(script);
+            const baseUrl = urls[attemptIndex];
+            attemptIndex++;
+
+            const callbackName = 'reddit_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+            const script = document.createElement('script');
+
+            const finalUrl = addJsonpParam(baseUrl, callbackName);
+
+            console.log('Reddit URL essayée :', finalUrl);
+
+            let finishedThisAttempt = false;
+
+            const cleanup = () => {
+                clearTimeout(timeout);
+                delete window[callbackName];
+
+                try {
+                    script.remove();
+                } catch (e) {}
+            };
+
+            const failThisAttempt = () => {
+                if (finishedThisAttempt || finishedGlobally) return;
+                finishedThisAttempt = true;
+                cleanup();
+                tryNext();
+            };
+
+            const timeout = setTimeout(() => {
+                failThisAttempt();
+            }, 7000);
+
+            window[callbackName] = function(data) {
+                if (finishedThisAttempt || finishedGlobally) return;
+
+                finishedThisAttempt = true;
+                finishedGlobally = true;
+
+                cleanup();
+                successCallback(data);
+            };
+
+            script.onerror = function() {
+                failThisAttempt();
+            };
+
+            script.src = finalUrl;
+            document.body.appendChild(script);
+        }
+
+        tryNext();
     };
 
     window.openModal = () => {
@@ -348,7 +435,9 @@
     };
 
     document.getElementById('modal-sub-input').addEventListener('keypress', e => {
-        if (e.key === 'Enter') window.submitModal();
+        if (e.key === 'Enter') {
+            window.submitModal();
+        }
     });
 
     document.getElementById('post-search').addEventListener('keypress', e => {
@@ -405,7 +494,7 @@
         const listContainer = document.getElementById('posts-list');
 
         try {
-            if (data && data.data && data.data.children) {
+            if (data && data.data && Array.isArray(data.data.children)) {
                 const postsData = data.data.children.map(child => child.data);
 
                 if (window.isLoadMoreActive) {
@@ -418,7 +507,7 @@
                 window.renderPostsList();
             } else {
                 if (!window.isLoadMoreActive) {
-                    listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Dossier introuvable ou privé.</div>';
+                    listContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Dossier introuvable, privé, bloqué ou vide.</div>';
                 }
             }
         } catch (e) {
@@ -430,8 +519,8 @@
 
     window.loadReddit = function(subreddit, isLoadMore = false) {
         window.isLoadMoreActive = isLoadMore;
-        const listContainer = document.getElementById('posts-list');
 
+        const listContainer = document.getElementById('posts-list');
         const cleanSub = cleanSubredditName(subreddit || 'all');
 
         if (!isLoadMore) {
@@ -451,19 +540,18 @@
             window.lastPostId = null;
         } else {
             const btn = document.getElementById('btn-load-more');
-            if (btn) btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Récupération...';
+
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Récupération...';
+            }
         }
 
-        let url = `${getRedditBase()}/r/${encodeURIComponent(cleanSub)}/.json?limit=25&cb=${Date.now()}`;
+        const urls = buildListingUrls(cleanSub, isLoadMore);
 
-        if (isLoadMore && window.lastPostId) {
-            url += `&after=${encodeURIComponent(window.lastPostId)}`;
-        }
-
-        window.fetchRedditJSONP(
-            url,
+        window.fetchRedditJSONPFallback(
+            urls,
             window.processPostsData,
-            `Impossible de charger r/${cleanSub}. Subreddit inexistant, privé, ou bloqué.`
+            `Impossible de charger r/${cleanSub}. Subreddit inexistant, privé, bloqué, ou JSONP refusé.`
         );
     };
 
@@ -480,10 +568,10 @@
             </div>
         `;
 
-        const url = `${getRedditBase()}/r/${encodeURIComponent(cleanSub)}/search/.json?q=${encodeURIComponent(query)}&restrict_sr=on&sort=relevance&t=all&limit=25&cb=${Date.now()}`;
+        const urls = buildSearchUrls(cleanSub, query);
 
-        window.fetchRedditJSONP(
-            url,
+        window.fetchRedditJSONPFallback(
+            urls,
             window.processPostsData,
             `Recherche impossible dans r/${cleanSub}.`
         );
@@ -537,7 +625,7 @@
                     <h4 class="${isRead ? 'text-gray-600 font-normal' : 'text-[#0f6cbd] font-semibold'} text-[12px] truncate leading-tight">${escapeHTML(post.title)}</h4>
 
                     <p class="text-[11px] text-gray-500 truncate mt-0.5">
-                        👍 ${escapeHTML(post.ups)} | 💬 ${escapeHTML(post.num_comments)} réponses
+                        👍 ${escapeHTML(post.ups || post.score || 0)} | 💬 ${escapeHTML(post.num_comments || 0)} réponses
                     </p>
                 </div>
             `;
@@ -565,6 +653,7 @@
 
     window.viewPost = function(postId, index) {
         const post = window.currentPosts.find(p => p.id === postId);
+
         if (!post) return;
 
         const viewContainer = document.getElementById('post-view');
@@ -627,7 +716,7 @@
                                 </div>
 
                                 <div class="text-xs text-gray-500 mt-0.5">
-                                    À : r/${escapeHTML(window.activeSubreddit)}
+                                    À : r/${escapeHTML(post.subreddit || window.activeSubreddit)}
                                 </div>
                             </div>
                         </div>
@@ -681,10 +770,10 @@
             </div>
         `;
 
-        const commentsUrl = `${getRedditBase()}${post.permalink.replace(/\/$/, '')}.json?cb=${Date.now()}`;
+        const urls = buildCommentsUrls(post.permalink);
 
-        window.fetchRedditJSONP(
-            commentsUrl,
+        window.fetchRedditJSONPFallback(
+            urls,
             function(data) {
                 const container = document.getElementById('comments-container');
 
